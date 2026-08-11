@@ -39,6 +39,7 @@ jobs:
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
+        timeout-minutes: 30
         env:
           ANDROID_COMPILE_SDK: "34"
           ANDROID_BUILD_TOOLS: "34.0.0"
