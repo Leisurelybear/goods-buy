@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.graincabinet.app"
+    namespace = "com.goodsbuy.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.graincabinet.app"
+        applicationId = "com.goodsbuy.app"
         minSdk = 29
         targetSdk = 34
         versionCode = 1

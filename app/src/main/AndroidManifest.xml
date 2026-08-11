@@ -8,15 +8,15 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
-        android:name=".GrainCabinetApp"
+        android:name=".GoodsBuyApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.GrainCabinet"
+        android:theme="@style/Theme.GoodsBuy"
         tools:targetApi="34">
-        <activity android:name=".MainActivity" android:exported="true" android:theme="@style/Theme.GrainCabinet">
+        <activity android:name=".MainActivity" android:exported="true" android:theme="@style/Theme.GoodsBuy">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

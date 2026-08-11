@@ -1,1 +1,1 @@
--keep class com.graincabinet.app.data.entity.** { *; }
+-keep class com.goodsbuy.app.data.entity.** { *; }

@@ -1,4 +1,4 @@
-# Grain Cabinet (谷柜)
+# GoodsBuy (谷的拜)
 
 An Android app for managing your anime merchandise collection — track purchases, sales, and real-time profit/loss in one place.
 
