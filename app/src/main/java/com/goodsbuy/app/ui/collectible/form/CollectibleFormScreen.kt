@@ -100,39 +100,88 @@ fun CollectibleFormScreen(
              }
 
              Text("基础信息", style = MaterialTheme.typography.titleMedium)
-             OutlinedTextField(value = uiState.name, onValueChange = { viewModel.updateField("name", it) }, label = { Text("制品名称*") }, modifier = Modifier.fillMaxWidth())
-             OutlinedTextField(value = uiState.category, onValueChange = { viewModel.updateField("category", it) }, label = { Text("品类") }, modifier = Modifier.fillMaxWidth())
-             OutlinedTextField(value = uiState.ipName, onValueChange = { viewModel.updateField("ipName", it) }, label = { Text("所属IP") }, modifier = Modifier.fillMaxWidth())
-             OutlinedTextField(value = uiState.seriesName, onValueChange = { viewModel.updateField("seriesName", it) }, label = { Text("系列名称") }, modifier = Modifier.fillMaxWidth())
-             OutlinedTextField(value = uiState.characterTag, onValueChange = { viewModel.updateField("characterTag", it) }, label = { Text("角色/CP") }, modifier = Modifier.fillMaxWidth())
+             OutlinedTextField(
+                 value = uiState.name,
+                 onValueChange = { viewModel.updateField("name", it) },
+                 label = { Text("制品名称*") },
+                 placeholder = { Text("例如：雷丘 毛绒挂件") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.category,
+                 onValueChange = { viewModel.updateField("category", it) },
+                 label = { Text("品类") },
+                 placeholder = { Text("例如：毛绒、立牌、徽章、盲盒") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.ipName,
+                 onValueChange = { viewModel.updateField("ipName", it) },
+                 label = { Text("所属IP") },
+                 placeholder = { Text("例如：宝可梦、咒术回战、原神") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.seriesName,
+                 onValueChange = { viewModel.updateField("seriesName", it) },
+                 label = { Text("系列名称") },
+                 placeholder = { Text("例如：伊布家族、宿傩手指系列") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.characterTag,
+                 onValueChange = { viewModel.updateField("characterTag", it) },
+                 label = { Text("角色/CP") },
+                 placeholder = { Text("例如：皮卡丘、伏黑惠×五条悟") },
+                 modifier = Modifier.fillMaxWidth()
+             )
 
              Text("购入信息", style = MaterialTheme.typography.titleMedium)
              NumTextField(
                  value = uiState.purchasePrice,
                  onValueChange = { viewModel.updateField("purchasePrice", it) },
                  label = "入手单价",
+                 placeholder = "例如：5800",
+                 isDecimal = true,
                  modifier = Modifier.fillMaxWidth()
              )
              NumTextField(
                  value = uiState.purchaseQuantity,
                  onValueChange = { viewModel.updateField("purchaseQuantity", it) },
                  label = "购入数量",
+                 placeholder = "例如：1",
                  modifier = Modifier.fillMaxWidth()
              )
              NumTextField(
                  value = uiState.purchaseShipping,
                  onValueChange = { viewModel.updateField("purchaseShipping", it) },
                  label = "购入运费",
+                 placeholder = "例如：500",
+                 isDecimal = true,
                  modifier = Modifier.fillMaxWidth()
              )
              NumTextField(
                  value = uiState.expectedPrice,
                  onValueChange = { viewModel.updateField("expectedPrice", it) },
                  label = "心理预期价",
+                 placeholder = "例如：7000",
+                 isDecimal = true,
                  modifier = Modifier.fillMaxWidth()
              )
-             OutlinedTextField(value = uiState.purchaseChannel, onValueChange = { viewModel.updateField("purchaseChannel", it) }, label = { Text("购买渠道") }, modifier = Modifier.fillMaxWidth())
-             OutlinedTextField(value = uiState.purchaseShop, onValueChange = { viewModel.updateField("purchaseShop", it) }, label = { Text("店铺/卖家") }, modifier = Modifier.fillMaxWidth())
+             OutlinedTextField(
+                 value = uiState.purchaseChannel,
+                 onValueChange = { viewModel.updateField("purchaseChannel", it) },
+                 label = { Text("购买渠道") },
+                 placeholder = { Text("例如：日本乐天、酷爱、闲鱼") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.purchaseShop,
+                 onValueChange = { viewModel.updateField("purchaseShop", it) },
+                 label = { Text("店铺/卖家") },
+                 placeholder = { Text("例如：宝可梦官方店铺、某鱼卖家XXX") },
+                 modifier = Modifier.fillMaxWidth()
+             )
 
             Text("状态", style = MaterialTheme.typography.titleMedium)
             var statusExpanded by remember { mutableStateOf(false) }
@@ -145,7 +194,14 @@ fun CollectibleFormScreen(
                 }
             }
 
-            OutlinedTextField(value = uiState.remark, onValueChange = { viewModel.updateField("remark", it) }, label = { Text("备注") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+            OutlinedTextField(
+                value = uiState.remark,
+                onValueChange = { viewModel.updateField("remark", it) },
+                label = { Text("备注") },
+                placeholder = { Text("例如：转赠给好友小葵，附赠原袋") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
         }
     }
 }
@@ -156,6 +212,7 @@ fun NumTextField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    placeholder: String = "",
     isDecimal: Boolean = false
 ) {
     OutlinedTextField(
@@ -164,18 +221,17 @@ fun NumTextField(
             if (newValue.isEmpty()) {
                 onValueChange("")
             } else if (isDecimal) {
-                // Allow: digits, optional single dot, digits after dot
                 if (newValue.all { it.isDigit() || it == '.' } && newValue.count { it == '.' } <= 1) {
                     onValueChange(newValue)
                 }
             } else {
-                // Only digits
                 if (newValue.all { it.isDigit() }) {
                     onValueChange(newValue)
                 }
             }
         },
         label = { Text(label) },
+        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         modifier = modifier,
         singleLine = true
     )
