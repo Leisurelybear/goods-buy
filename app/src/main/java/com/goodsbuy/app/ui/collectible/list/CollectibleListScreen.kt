@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.domain.model.OrderStatus
@@ -34,6 +35,14 @@ fun CollectibleListScreen(
         prefs = preferencesRepository.preferencesState.value
     }
 
+    // Maintain cursor position at end when text changes externally
+    var searchText by remember { mutableStateOf(TextFieldValue(uiState.searchQuery)) }
+    LaunchedEffect(uiState.searchQuery) {
+        if (searchText.text != uiState.searchQuery) {
+            searchText = TextFieldValue(uiState.searchQuery, selection = androidx.compose.ui.text.TextRange(uiState.searchQuery.length))
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToForm) {
@@ -44,8 +53,11 @@ fun CollectibleListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Search bar
             OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
+                value = searchText,
+                onValueChange = { newValue ->
+                    searchText = newValue
+                    viewModel.onSearchQueryChange(newValue.text)
+                },
                 placeholder = { Text("搜索藏品、IP、角色...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
