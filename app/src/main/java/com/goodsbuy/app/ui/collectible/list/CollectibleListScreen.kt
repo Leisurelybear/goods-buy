@@ -34,8 +34,6 @@ fun CollectibleListScreen(
         prefs = preferencesRepository.preferencesState.value
     }
 
-    var showFilters by remember { mutableStateOf(false) }
-
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToForm) {
@@ -50,38 +48,32 @@ fun CollectibleListScreen(
                 onValueChange = viewModel::onSearchQueryChange,
                 placeholder = { Text("搜索藏品、IP、角色...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { showFilters = !showFilters }) {
-                        Icon(Icons.Default.Search, contentDescription = "筛选")
-                    }
-                },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 singleLine = true
             )
 
-            // Filter chips (collapsible)
-            if (showFilters) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        FilterChip(
-                            selected = uiState.selectedStatusFilter == null,
-                            onClick = { viewModel.onStatusFilterChange(null) },
-                            label = { Text("全部") }
-                        )
-                    }
-                    items(OrderStatus.entries) { status ->
-                        FilterChip(
-                            selected = uiState.selectedStatusFilter == status.name,
-                            onClick = { viewModel.onStatusFilterChange(status.name) },
-                            label = { Text(status.displayName) }
-                        )
-                    }
+            // Status filter chips — always visible
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = uiState.selectedStatusFilter == null,
+                        onClick = { viewModel.onStatusFilterChange(null) },
+                        label = { Text("全部") }
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                items(OrderStatus.entries) { status ->
+                    FilterChip(
+                        selected = uiState.selectedStatusFilter == status.name,
+                        onClick = { viewModel.onStatusFilterChange(status.name) },
+                        label = { Text(status.displayName) }
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Grid gallery
             if (uiState.collectibles.isEmpty() && !uiState.isLoading) {

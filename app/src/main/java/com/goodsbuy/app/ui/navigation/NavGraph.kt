@@ -55,7 +55,10 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable(Screen.Profile.route) {
             val context = LocalContext.current
             val preferencesRepository = remember { PreferencesRepository(context) }
-            ProfileScreen(preferencesRepository = preferencesRepository)
+            ProfileScreen(
+                preferencesRepository = preferencesRepository,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

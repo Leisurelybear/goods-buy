@@ -3,8 +3,7 @@ package com.goodsbuy.app.ui.profile
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -17,7 +16,10 @@ import com.goodsbuy.app.ui.preferences.GridPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(preferencesRepository: PreferencesRepository) {
+fun ProfileScreen(
+    preferencesRepository: PreferencesRepository,
+    onNavigateBack: () -> Unit = {}
+) {
     var showSettings by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
 
@@ -28,18 +30,14 @@ fun ProfileScreen(preferencesRepository: PreferencesRepository) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("我的") },
-                actions = {
-                    if (!showSettings) {
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "设置")
-                        }
-                    } else {
+                title = { Text(if (showSettings) "显示设置" else "我的") },
+                navigationIcon = {
+                    if (showSettings) {
                         IconButton(onClick = {
                             showSettings = false
                             preferencesRepository.save(prefs)
                         }) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "完成")
+                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                         }
                     }
                 }
@@ -54,8 +52,6 @@ fun ProfileScreen(preferencesRepository: PreferencesRepository) {
                 // Settings section
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("显示设置", style = MaterialTheme.typography.titleMedium)
-
                         // Columns setting
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -145,7 +141,7 @@ fun ProfileScreen(preferencesRepository: PreferencesRepository) {
                 // Normal profile section
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // Settings row — clickable
+                        // Settings row — clickable, navigates to settings
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable { showSettings = true },
                             verticalAlignment = Alignment.CenterVertically
@@ -154,7 +150,7 @@ fun ProfileScreen(preferencesRepository: PreferencesRepository) {
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("设置", style = MaterialTheme.typography.bodyLarge)
                             Spacer(modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.rotate(180f))
                         }
                         HorizontalDivider()
                         Row(verticalAlignment = Alignment.CenterVertically) {
