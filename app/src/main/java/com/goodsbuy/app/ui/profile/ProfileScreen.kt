@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.preferences.GridPreferences
@@ -150,7 +151,7 @@ fun ProfileScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("设置", style = MaterialTheme.typography.bodyLarge)
                             Spacer(modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.rotate(180f))
+                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.graphicsLayer(rotationZ = 180f))
                         }
                         HorizontalDivider()
                         Row(verticalAlignment = Alignment.CenterVertically) {
