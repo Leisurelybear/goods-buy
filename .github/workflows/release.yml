@@ -37,6 +37,10 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
+      - name: Download Gradle Wrapper
+        run: ./gradlew --version || (sleep 10 && ./gradlew --version)
+        timeout-minutes: 10
+
       - name: Build Release APK
         run: ./gradlew assembleRelease
         timeout-minutes: 30
