@@ -64,7 +64,7 @@ fun CollectibleCard(
             }
 
             // Status badge — top right, fixed position
-            if (showStatus && collectible.status != OrderStatus.OWNED) {
+            if (showStatus) {
                 val statusColor = Color(collectible.status.colorHex)
                 Box(
                     modifier = Modifier

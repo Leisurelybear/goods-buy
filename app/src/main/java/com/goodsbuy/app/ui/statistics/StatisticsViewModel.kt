@@ -20,18 +20,21 @@ class StatisticsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _categoryType = MutableStateFlow("ip")
+    private val _statusFilter = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<StatisticsUiState> = combine(
-        repository.getAllCollectibles(), _categoryType
-    ) { collectibles, categoryType ->
+        repository.getAllCollectibles(), _categoryType, _statusFilter
+    ) { collectibles, categoryType, status ->
+        val filtered = if (status != null) collectibles.filter { it.status.name == status } else collectibles
         StatisticsUiState(
-            summary = getDashboardSummary(collectibles),
-            categoryStats = getCategoryStats(collectibles, categoryType),
-            monthlyStats = getMonthlyStats(collectibles),
+            summary = getDashboardSummary(filtered),
+            categoryStats = getCategoryStats(filtered, categoryType),
+            monthlyStats = getMonthlyStats(filtered),
             categoryType = categoryType,
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatisticsUiState())
 
     fun changeCategoryType(type: String) { _categoryType.value = type }
+    fun changeStatusFilter(status: String?) { _statusFilter.value = status }
 }
