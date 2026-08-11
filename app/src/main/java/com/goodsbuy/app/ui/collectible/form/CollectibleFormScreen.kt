@@ -18,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -107,12 +110,32 @@ fun CollectibleFormScreen(
              OutlinedTextField(value = uiState.characterTag, onValueChange = { viewModel.updateField("characterTag", it) }, label = { Text("角色/CP") }, modifier = Modifier.fillMaxWidth())
 
              Text("购入信息", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = uiState.purchasePrice, onValueChange = { viewModel.updateField("purchasePrice", it) }, label = { Text("入手单价") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.purchaseQuantity, onValueChange = { viewModel.updateField("purchaseQuantity", it) }, label = { Text("购入数量") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.purchaseShipping, onValueChange = { viewModel.updateField("purchaseShipping", it) }, label = { Text("购入运费") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.expectedPrice, onValueChange = { viewModel.updateField("expectedPrice", it) }, label = { Text("心理预期价") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.purchaseChannel, onValueChange = { viewModel.updateField("purchaseChannel", it) }, label = { Text("购买渠道") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.purchaseShop, onValueChange = { viewModel.updateField("purchaseShop", it) }, label = { Text("店铺/卖家") }, modifier = Modifier.fillMaxWidth())
+             NumTextField(
+                 value = uiState.purchasePrice,
+                 onValueChange = { viewModel.updateField("purchasePrice", it) },
+                 label = "入手单价",
+                 modifier = Modifier.fillMaxWidth()
+             )
+             NumTextField(
+                 value = uiState.purchaseQuantity,
+                 onValueChange = { viewModel.updateField("purchaseQuantity", it) },
+                 label = "购入数量",
+                 modifier = Modifier.fillMaxWidth()
+             )
+             NumTextField(
+                 value = uiState.purchaseShipping,
+                 onValueChange = { viewModel.updateField("purchaseShipping", it) },
+                 label = "购入运费",
+                 modifier = Modifier.fillMaxWidth()
+             )
+             NumTextField(
+                 value = uiState.expectedPrice,
+                 onValueChange = { viewModel.updateField("expectedPrice", it) },
+                 label = "心理预期价",
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(value = uiState.purchaseChannel, onValueChange = { viewModel.updateField("purchaseChannel", it) }, label = { Text("购买渠道") }, modifier = Modifier.fillMaxWidth())
+             OutlinedTextField(value = uiState.purchaseShop, onValueChange = { viewModel.updateField("purchaseShop", it) }, label = { Text("店铺/卖家") }, modifier = Modifier.fillMaxWidth())
 
             Text("状态", style = MaterialTheme.typography.titleMedium)
             var statusExpanded by remember { mutableStateOf(false) }
@@ -128,4 +151,35 @@ fun CollectibleFormScreen(
             OutlinedTextField(value = uiState.remark, onValueChange = { viewModel.updateField("remark", it) }, label = { Text("备注") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
     }
+}
+
+@Composable
+fun NumTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isDecimal: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { newValue ->
+            if (newValue.isEmpty()) {
+                onValueChange("")
+            } else if (isDecimal) {
+                // Allow: digits, optional single dot, digits after dot
+                if (newValue.all { it.isDigit() || it == '.' } && newValue.count { it == '.' } <= 1) {
+                    onValueChange(newValue)
+                }
+            } else {
+                // Only digits
+                if (newValue.all { it.isDigit() }) {
+                    onValueChange(newValue)
+                }
+            }
+        },
+        label = { Text(label) },
+        modifier = modifier,
+        singleLine = true
+    )
 }

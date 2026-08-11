@@ -1,9 +1,10 @@
 package com.goodsbuy.app.ui.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -144,10 +145,16 @@ fun ProfileScreen(preferencesRepository: PreferencesRepository) {
                 // Normal profile section
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Settings row — clickable
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { showSettings = true },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(Icons.Default.Settings, contentDescription = null)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("设置", style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         HorizontalDivider()
                         Row(verticalAlignment = Alignment.CenterVertically) {
