@@ -9,6 +9,28 @@
 - **数据看板** — 总投资、总营收、持仓价值、盈亏率一目了然
 - **橱窗展示** — 网格化藏品列表，自定义每行列数和卡片大小
 
+## 截图
+
+<!-- 放置截图到 docs/screenshots/ 目录，并取消下面的注释 -->
+
+### 藏品列表（橱窗模式）
+<!-- ![藏品列表](docs/screenshots/collection_grid.png) -->
+
+### 藏品详情
+<!-- ![藏品详情](docs/screenshots/collectible_detail.png) -->
+
+### 添加/编辑藏品
+<!-- ![添加藏品](docs/screenshots/add_collectible.png) -->
+
+### 盈亏统计
+<!-- ![盈亏统计](docs/screenshots/statistics.png) -->
+
+### 数据看板
+<!-- ![数据看板](docs/screenshots/dashboard.png) -->
+
+### 设置页面
+<!-- ![设置页面](docs/screenshots/settings.png) -->
+
 ## 技术栈
 
 | 类别 | 技术选型 |

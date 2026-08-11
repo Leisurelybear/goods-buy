@@ -9,6 +9,28 @@ An Android app for managing your anime merchandise collection — track purchase
 - **Dashboard** — At-a-glance overview of investment, revenue, holdings, and key metrics
 - **Gallery View** — Grid-style collection display with configurable columns and card size
 
+## Screenshots
+
+<!-- Place screenshots in docs/screenshots/ directory and uncomment the lines below -->
+
+### Collection Grid
+<!-- ![Collection Grid](docs/screenshots/collection_grid.png) -->
+
+### Collectible Detail
+<!-- ![Collectible Detail](docs/screenshots/collectible_detail.png) -->
+
+### Add/Edit Collectible
+<!-- ![Add Collectible](docs/screenshots/add_collectible.png) -->
+
+### Profit/Loss Statistics
+<!-- ![Statistics](docs/screenshots/statistics.png) -->
+
+### Dashboard
+<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+
+### Settings
+<!-- ![Settings](docs/screenshots/settings.png) -->
+
 ## Tech Stack
 
 | Layer | Technology |
