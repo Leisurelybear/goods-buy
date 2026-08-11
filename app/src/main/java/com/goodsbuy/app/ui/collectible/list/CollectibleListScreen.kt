@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -19,7 +18,6 @@ import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
-import com.goodsbuy.app.ui.preferences.GridPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +28,11 @@ fun CollectibleListScreen(
     viewModel: CollectibleListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val prefs by preferencesRepository.collectGridPreferences()
+    var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
+
+    LaunchedEffect(preferencesRepository) {
+        prefs = preferencesRepository.preferencesState.value
+    }
 
     var showFilters by remember { mutableStateOf(false) }
 
@@ -96,7 +98,10 @@ fun CollectibleListScreen(
                         CollectibleCard(
                             collectible = collectible,
                             onClick = { onNavigateToDetail(collectible.id) },
-                            cardSize = prefs.cardSize.dp
+                            cardSize = prefs.cardSize.dp,
+                            showName = prefs.showName,
+                            showPrice = prefs.showPrice,
+                            showStatus = prefs.showStatus
                         )
                     }
                 }

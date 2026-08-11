@@ -1,6 +1,5 @@
 package com.goodsbuy.app.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,13 +18,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
+import com.goodsbuy.app.domain.model.OrderStatus
 
 @Composable
 fun CollectibleCard(
     collectible: Collectible,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    cardSize: Dp = 140.dp
+    cardSize: Dp = 140.dp,
+    showName: Boolean = true,
+    showPrice: Boolean = true,
+    showStatus: Boolean = true
 ) {
     Card(
         modifier = modifier
@@ -45,19 +48,18 @@ fun CollectibleCard(
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
-                // Dark overlay at bottom for text
+                // Dark overlay at bottom
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
-                        .height(60.dp)
+                        .height(if (showName || showPrice || showStatus) 60.dp else 0.dp)
                         .background(
                             androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
                             RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
                         )
                 )
             } else {
-                // Placeholder when no image
                 Box(
                     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
@@ -76,28 +78,55 @@ fun CollectibleCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
             ) {
-                Text(
-                    text = collectible.name,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Status chip (top-right of card, above overlay)
+                if (showStatus && collectible.status != OrderStatus.OWNED) {
+                    val statusColor = androidx.compose.ui.graphics.Color(collectible.status.colorHex)
                     Text(
-                        text = "¥${collectible.purchasePrice}",
+                        text = collectible.status.displayName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .background(statusColor, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
                     )
-                    if (collectible.imagePaths.size > 1) {
+                }
+
+                // Name and price row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    if (showName) {
+                        Text(
+                            text = collectible.name,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (showPrice) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Badge(
-                            modifier = Modifier.height(14.dp),
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ) {
+                        Text(
+                            text = "¥${collectible.purchasePrice}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Multi-image badge
+                if (collectible.imagePaths.size > 1) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
                             Text(
                                 "+${collectible.imagePaths.size - 1}",
                                 style = MaterialTheme.typography.labelSmall,
