@@ -1,12 +1,15 @@
 package com.goodsbuy.app.ui.collectible.form
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.model.StorageStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CollectibleFormViewModel @Inject constructor(
-    private val repository: CollectibleRepository
+    private val repository: CollectibleRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectibleFormUiState())
@@ -76,8 +80,21 @@ class CollectibleFormViewModel @Inject constructor(
     fun updateStatus(status: OrderStatus) { _uiState.update { it.copy(status = status) } }
     fun updateStorageStatus(storage: StorageStatus) { _uiState.update { it.copy(storageStatus = storage) } }
     fun updateFreeShipping(free: Boolean) { _uiState.update { it.copy(isFreeShipping = free) } }
-    fun addImagePath(path: String) { _uiState.update { it.copy(imagePaths = it.imagePaths + path) } }
-    fun removeImagePath(index: Int) { _uiState.update { state -> state.copy(imagePaths = state.imagePaths.filterIndexed { i, _ -> i != index }) } }
+
+    fun addImagePath(uri: String) {
+        viewModelScope.launch {
+            val newPath = ImageUtils.copyImageToInternalStorage(context, android.net.Uri.parse(uri))
+            if (newPath != null) {
+                _uiState.update { it.copy(imagePaths = it.imagePaths + newPath) }
+            }
+        }
+    }
+
+    fun removeImagePath(index: Int) {
+        val path = _uiState.value.imagePaths[index]
+        ImageUtils.deleteImage(context, path)
+        _uiState.update { state -> state.copy(imagePaths = state.imagePaths.filterIndexed { i, _ -> i != index }) }
+    }
 
     fun save() {
         val state = _uiState.value
@@ -102,3 +119,4 @@ class CollectibleFormViewModel @Inject constructor(
         }
     }
 }
+
