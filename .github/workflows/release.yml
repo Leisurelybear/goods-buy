@@ -25,7 +25,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build Release APK
-        run: gradle assembleRelease
+        run: ./gradlew assembleRelease
         env:
           ANDROID_COMPILE_SDK: "34"
           ANDROID_BUILD_TOOLS: "34.0.0"
