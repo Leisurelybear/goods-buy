@@ -1,0 +1,19 @@
+package com.goodsbuy.app.di
+
+import android.content.Context
+import com.goodsbuy.app.ui.preferences.PreferencesRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ViewModelComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
+
+@Module
+@InstallIn(ViewModelComponent::class)
+object PreferencesModule {
+
+    @Provides
+    fun providePreferencesRepository(@ApplicationContext context: Context): PreferencesRepository {
+        return PreferencesRepository(context)
+    }
+}

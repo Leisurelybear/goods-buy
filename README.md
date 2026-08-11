@@ -1,52 +1,57 @@
-# GoodsBuy (谷的拜)
+# 谷的拜 (GoodsBuy)
 
-An Android app for managing your anime merchandise collection — track purchases, sales, and real-time profit/loss in one place.
+面向二次元「吃谷」群体的周边全生命周期管理工具，一站式记录买入/卖出、自动统计盈亏。
 
-## Features (MVP)
+## 功能（MVP）
 
-- **Collection Management** — Record, edit, and categorize your goods; manage order status (owned / sold / pending); attach photos
-- **Profit/Loss Stats** — Auto-calculated P&L across total, monthly, and category dimensions; visual charts
-- **Dashboard** — At-a-glance overview of investment, revenue, holdings, and key metrics
+- **藏品管理** — 录入、编辑、分类管理；支持订单状态（持有 / 已售 / 待出）与图片附件
+- **盈亏统计** — 自动计算累计、月度、分类维度的收支与利润；可视化图表展示
+- **数据看板** — 总投资、总营收、持仓价值、盈亏率一目了然
+- **橱窗展示** — 网格化藏品列表，自定义每行列数和卡片大小
 
-## Tech Stack
+## 技术栈
 
-| Layer | Technology |
-|-------|-----------|
-| Language | Kotlin |
+| 类别 | 技术选型 |
+|------|----------|
+| 语言 | Kotlin |
 | UI | Jetpack Compose + Material 3 |
-| Database | Room 2.6.x |
-| DI | Hilt |
-| Navigation | Compose Navigation |
-| Images | Coil |
-| Charts | Vico |
-| Async | Coroutines + Flow |
+| 数据库 | Room 2.6.x |
+| 依赖注入 | Hilt |
+| 导航 | Compose Navigation |
+| 图片加载 | Coil |
+| 图表 | Vico |
+| 异步 | Coroutines + Flow |
 
-## Requirements
+## 环境要求
 
 - minSdk: 29 (Android 10)
 - JDK 17
 - Android SDK 34
 
-## Build
+## 构建
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-The APK is at `app/build/outputs/apk/debug/app-debug.apk`.
+APK 输出路径：`app/build/outputs/apk/debug/app-debug.apk`
 
-## Architecture
+## 架构
 
-MVVM + Clean Architecture:
+MVVM + Clean Architecture 分层：
 
 ```
-Presentation (Compose Screens + ViewModels)
+表现层（Compose 界面 + ViewModel）
       ↓
-   Domain (Use Cases + Repository Interfaces)
+  领域层（Use Case + Repository 接口）
       ↓
-    Data (Room DB + Local File Storage)
+   数据层（Room 数据库 + 本地文件存储）
 ```
 
 ## License
+
+[English README](README_en.md)
+
+## 许可证
 
 MIT

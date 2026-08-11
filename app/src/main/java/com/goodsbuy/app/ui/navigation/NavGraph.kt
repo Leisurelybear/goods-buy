@@ -1,7 +1,9 @@
 package com.goodsbuy.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,15 +13,19 @@ import com.goodsbuy.app.ui.collectible.detail.CollectibleDetailScreen
 import com.goodsbuy.app.ui.collectible.form.CollectibleFormScreen
 import com.goodsbuy.app.ui.collectible.list.CollectibleListScreen
 import com.goodsbuy.app.ui.profile.ProfileScreen
+import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.statistics.StatisticsScreen
 
 @Composable
 fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(navController = navController, startDestination = Screen.CollectibleList.route, modifier = modifier) {
         composable(Screen.CollectibleList.route) {
+            val context = LocalContext.current
+            val preferencesRepository = remember { PreferencesRepository(context) }
             CollectibleListScreen(
                 onNavigateToDetail = { navController.navigate(Screen.CollectibleDetail.createRoute(it)) },
-                onNavigateToForm = { navController.navigate(Screen.CollectibleForm.createRoute()) }
+                onNavigateToForm = { navController.navigate(Screen.CollectibleForm.createRoute()) },
+                preferencesRepository = preferencesRepository
             )
         }
         composable(
@@ -47,7 +53,9 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             StatisticsScreen()
         }
         composable(Screen.Profile.route) {
-            ProfileScreen()
+            val context = LocalContext.current
+            val preferencesRepository = remember { PreferencesRepository(context) }
+            ProfileScreen(preferencesRepository = preferencesRepository)
         }
     }
 }
