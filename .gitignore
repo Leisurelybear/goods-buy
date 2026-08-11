@@ -1,0 +1,24 @@
+# Built files
+build/
+.gradle/
+.idea/
+*.iml
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradle
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Keystore
+*.jks
+*.keystore
+
+# APK (keep for releases but ignore debug)
+# app/build/outputs/apk/debug/
+
+# Temp tools
+.tools/
