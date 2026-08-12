@@ -26,7 +26,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             val preferencesRepository = remember { PreferencesRepository(context) }
             CollectibleListScreen(
                 onNavigateToDetail = { navController.navigate(Screen.CollectibleDetail.createRoute(it)) },
-                onNavigateToForm = { navController.navigate(Screen.CollectibleForm.createRoute()) },
+                onNavigateToForm = { id -> navController.navigate(Screen.CollectibleForm.createRoute(id)) },
                 preferencesRepository = preferencesRepository
             )
         }
