@@ -2,16 +2,20 @@ package com.goodsbuy.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectLongPressTouchSlop
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,7 +33,11 @@ fun CollectibleCard(
     cardSize: Dp = 140.dp,
     showName: Boolean = true,
     showPrice: Boolean = true,
-    showStatus: Boolean = true
+    showStatus: Boolean = true,
+    onLongPress: (() -> Unit)? = null,
+    isSelected: Boolean = false,
+    onSelect: (() -> Unit)? = null,
+    batchMode: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -37,7 +45,14 @@ fun CollectibleCard(
             .aspectRatio(0.75f)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick),
+            .then(
+                if (onLongPress != null) Modifier.pointerInput(Unit) {
+                    detectLongPressTouchSlop(onLongPress = { onLongPress() })
+                } else Modifier
+            )
+            .clickable(enabled = !batchMode || onSelect != null) {
+                if (batchMode) onSelect?.invoke() else onClick()
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -63,7 +78,7 @@ fun CollectibleCard(
                 }
             }
 
-            // Status badge — top right, fixed position
+            // Status badge — top right
             if (showStatus) {
                 val statusColor = Color(collectible.status.colorHex)
                 Box(
@@ -79,6 +94,28 @@ fun CollectibleCard(
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+
+            // Selection overlay
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0x80000000)),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    IconButton(
+                        onClick = { onSelect?.invoke() },
+                        modifier = Modifier.padding(6.dp).size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "已选中",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 
@@ -99,7 +136,6 @@ fun CollectibleCard(
                         .padding(horizontal = 6.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    // Row: name (left) + price (right)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -126,7 +162,6 @@ fun CollectibleCard(
                             )
                         }
                     }
-                    // Multi-image badge or placeholder
                     if (collectible.imagePaths.size > 1) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
