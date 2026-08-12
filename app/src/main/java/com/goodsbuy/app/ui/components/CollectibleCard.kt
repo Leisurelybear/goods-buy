@@ -1,5 +1,6 @@
 package com.goodsbuy.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -7,14 +8,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,8 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
-import com.goodsbuy.app.domain.model.OrderStatus
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CollectibleCard(
     collectible: Collectible,
@@ -48,10 +46,8 @@ fun CollectibleCard(
                 onClick = { if (!batchMode) onClick() },
                 onLongClick = { if (onLongPress != null) onLongPress() },
                 enabled = !batchMode || onSelect != null
-            )
-,
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Image
             if (collectible.imagePaths.isNotEmpty()) {
