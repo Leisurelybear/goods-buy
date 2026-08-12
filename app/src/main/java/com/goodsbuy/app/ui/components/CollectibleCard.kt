@@ -48,6 +48,7 @@ fun CollectibleCard(
                 enabled = !batchMode || onSelect != null
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Image
             if (collectible.imagePaths.isNotEmpty()) {
