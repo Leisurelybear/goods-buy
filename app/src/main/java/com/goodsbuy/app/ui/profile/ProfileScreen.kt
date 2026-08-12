@@ -51,7 +51,7 @@ fun ProfileScreen(
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         viewModel.exportBackup(
-            uri = uri,
+            outputUri = uri,
             onSuccess = { snackbarHostState.showSnackbar("导出成功") },
             onFailure = { message -> snackbarHostState.showSnackbar("导出失败: $message") }
         )
