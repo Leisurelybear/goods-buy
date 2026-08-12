@@ -9,6 +9,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.ui.collectible.detail.CollectibleDetailScreen
 import com.goodsbuy.app.ui.collectible.form.CollectibleFormScreen
 import com.goodsbuy.app.ui.collectible.list.CollectibleListScreen
