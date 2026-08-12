@@ -47,13 +47,14 @@ fun ProfileScreen(
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
+    val scope = rememberCoroutineScope()
         contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         viewModel.exportBackup(
             outputUri = uri,
-            onSuccess = { snackbarHostState.showSnackbar("导出成功") },
-            onFailure = { message -> snackbarHostState.showSnackbar("导出失败: $message") }
+            onSuccess = { scope.launch { snackbarHostState.showSnackbar("导出成功") } },
+            onFailure = { message -> scope.launch { snackbarHostState.showSnackbar("导出失败: $message") } }
         )
     }
 
@@ -137,6 +138,7 @@ fun ProfileScreen(
                     forceImportDuplicates = currentForceImport,
                     onToggleForceImport = { viewModel.setForceImportDuplicates(it) },
                     onConfirm = {
+                        scope.launch {
                         viewModel.confirmImport(
                             onSuccess = { count -> snackbarHostState.showSnackbar("成功导入 $count 条藏品") },
                             onFailure = { message -> snackbarHostState.showSnackbar("导入失败: $message") }
