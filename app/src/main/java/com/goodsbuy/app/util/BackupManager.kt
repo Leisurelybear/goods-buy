@@ -1,4 +1,5 @@
 package com.goodsbuy.app.util
+import kotlinx.coroutines.flow.first
 
 import android.content.Context
 import android.net.Uri
@@ -6,9 +7,13 @@ import android.util.Log
 import com.goodsbuy.app.data.entity.CollectibleEntity
 import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.domain.model.*
+import com.goodsbuy.app.ui.backup.ImportAction
+import com.goodsbuy.app.ui.backup.ImportPreviewItem
+import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
+import java.util.UUID
 
 private const val TAG = "BackupManager"
 private const val BACKUP_VERSION = 1
@@ -43,6 +48,12 @@ data class CollectibleRecord(
     val updatedAt: Long
 )
 
+data class Manifest(
+    val version: Int,
+    val timestamp: Long,
+    val collectibles: List<CollectibleRecord>
+)
+
 object BackupManager {
 
     fun export(context: Context, collectibles: List<Collectible>, outputUri: Uri): Boolean {
@@ -50,13 +61,11 @@ object BackupManager {
             val backupDir = File(context.cacheDir, "backup_export")
             backupDir.mkdirs()
 
-            // First, copy all images to temp dir
             val recordList = collectibles.map { c ->
                 val filenames = mutableListOf<String>()
                 c.imagePaths.forEach { path ->
                     val src = File(path)
                     if (src.exists()) {
-                        // Use unique filename to avoid conflicts
                         val uniqueName = "${System.currentTimeMillis()}_${src.name}"
                         val dest = File(backupDir, uniqueName)
                         src.copyTo(dest, overwrite = false)
@@ -78,10 +87,8 @@ object BackupManager {
                 )
             }
 
-            // Build JSON first, then write to ZIP
             val json = buildJson(BACKUP_VERSION, System.currentTimeMillis(), recordList)
 
-            // Write to output URI
             context.contentResolver.openOutputStream(outputUri)?.use { outStream ->
                 java.util.zip.ZipOutputStream(BufferedOutputStream(outStream)).use { zos ->
                     zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
@@ -97,20 +104,69 @@ object BackupManager {
                 }
             }
 
-            // Cleanup temp dir
             backupDir.deleteRecursively()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Export failed", e)
-            // Cleanup on failure
-            try {
-                File(context.cacheDir, "backup_export").deleteRecursively()
-            } catch (_: Exception) {}
+            try { File(context.cacheDir, "backup_export").deleteRecursively() } catch (_: Exception) {}
             false
         }
     }
 
-    suspend fun import(context: Context, inputUri: Uri, dao: CollectibleDao): Result<Int> {
+    suspend fun previewImport(context: Context, inputUri: Uri, dao: CollectibleDao, forceImportDuplicates: Boolean): ImportPreviewResult {
+        return try {
+            val tempDir = File(context.cacheDir, "backup_preview")
+            tempDir.mkdirs()
+
+            context.contentResolver.openInputStream(inputUri)?.use { ins ->
+                java.util.zip.ZipInputStream(BufferedInputStream(ins)).use { zis ->
+                    var entry: java.util.zip.ZipEntry? = zis.nextEntry
+                    while (entry != null) {
+                        val outFile = File(tempDir, entry.name)
+                        if (entry.isDirectory) {
+                            outFile.mkdirs()
+                        } else {
+                            outFile.parentFile?.mkdirs()
+                            outFile.outputStream().use { outs -> zis.copyTo(outs) }
+                        }
+                        zis.closeEntry()
+                        entry = zis.nextEntry
+                    }
+                }
+            }
+
+            val manifestFile = File(tempDir, "manifest.json")
+            if (!manifestFile.exists()) return ImportPreviewResult(emptyList(), 0, 0, 0)
+
+            val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
+
+            // Get existing names from database
+            val existingItems = dao.getAllCollectibles().first()
+            val existingNames = existingItems.map { it.name }.toSet()
+
+            val items = manifest.collectibles.map { record ->
+                val isDuplicate = existingNames.contains(record.name)
+                val action = if (forceImportDuplicates || !isDuplicate) ImportAction.IMPORT else ImportAction.SKIP
+                val reason = if (isDuplicate && !forceImportDuplicates) "已存在同名藏品: ${record.name}" else ""
+                ImportPreviewItem(record, action, reason)
+            }
+
+            tempDir.deleteRecursively()
+
+            ImportPreviewResult(
+                items = items,
+                total = items.size,
+                willImport = items.count { it.action == ImportAction.IMPORT },
+                willSkip = items.count { it.action == ImportAction.SKIP }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Preview import failed", e)
+            try { File(context.cacheDir, "backup_preview").deleteRecursively() } catch (_: Exception) {}
+            ImportPreviewResult(emptyList(), 0, 0, 0)
+        }
+    }
+
+    suspend fun import(context: Context, inputUri: Uri, dao: CollectibleDao, forceImportDuplicates: Boolean): Result<Int> {
         return try {
             val imagesDir = File(context.filesDir, "images")
             imagesDir.mkdirs()
@@ -118,7 +174,6 @@ object BackupManager {
             val tempDir = File(context.cacheDir, "backup_import")
             tempDir.mkdirs()
 
-            // Extract ZIP to temp dir
             context.contentResolver.openInputStream(inputUri)?.use { ins ->
                 java.util.zip.ZipInputStream(BufferedInputStream(ins)).use { zis ->
                     var entry: java.util.zip.ZipEntry? = zis.nextEntry
@@ -141,11 +196,10 @@ object BackupManager {
 
             val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
 
-            // Map old image filenames to new paths
             val imageMap = mutableMapOf<String, String>()
             File(tempDir, "images").listFiles()?.forEach { file ->
-                // Use timestamp + original name to avoid conflicts
-                val newFileName = "${System.currentTimeMillis()}_${file.name}"
+                val uniqueSuffix = if (forceImportDuplicates) "_${UUID.randomUUID().toString().substring(0, 8)}" else ""
+                val newFileName = "${System.currentTimeMillis()}${uniqueSuffix}_${file.name}"
                 val newFile = File(imagesDir, newFileName)
                 file.copyTo(newFile, overwrite = false)
                 imageMap[file.name] = newFile.absolutePath
@@ -153,16 +207,16 @@ object BackupManager {
 
             var importedCount = 0
             manifest.collectibles.forEach { record ->
-                // Skip if name + ipName + seriesName already exists (basic dedup)
-                val existing = dao.searchByName(record.name)
-                if (existing.isNotEmpty()) {
+                val isDuplicate = dao.searchByName(record.name).isNotEmpty()
+                if (isDuplicate && !forceImportDuplicates) {
                     Log.d(TAG, "Skipping duplicate: ${record.name}")
                     return@forEach
                 }
 
                 val newImagePaths = record.imageFilenames.mapNotNull { fn -> imageMap[fn] }
                 val entity = CollectibleEntity(
-                    name = record.name, category = record.category, type = record.type,
+                    name = if (isDuplicate && forceImportDuplicates) "${record.name}_${UUID.randomUUID().toString().substring(0, 4)}" else record.name,
+                    category = record.category, type = record.type,
                     ipName = record.ipName, seriesName = record.seriesName, characterTag = record.characterTag,
                     remark = record.remark, purchaseChannel = record.purchaseChannel, purchaseShop = record.purchaseShop,
                     purchaseDate = record.purchaseDate, purchasePrice = record.purchasePrice,
@@ -179,16 +233,11 @@ object BackupManager {
                 importedCount++
             }
 
-            // Cleanup temp dir
             tempDir.deleteRecursively()
-
             Result.success(importedCount)
         } catch (e: Exception) {
             Log.e(TAG, "Import failed", e)
-            // Cleanup on failure
-            try {
-                File(context.cacheDir, "backup_import").deleteRecursively()
-            } catch (_: Exception) {}
+            try { File(context.cacheDir, "backup_import").deleteRecursively() } catch (_: Exception) {}
             Result.failure(e)
         }
     }
@@ -242,20 +291,13 @@ object BackupManager {
         for (i in 0 until arr.length()) {
             val item = arr.getJSONObject(i)
             collectibles.add(CollectibleRecord(
-                id = item.optLong("id"),
-                name = item.optString("name"),
-                category = item.optString("category"),
-                type = item.optString("type"),
-                ipName = item.optString("ipName"),
-                seriesName = item.optString("seriesName"),
-                characterTag = item.optString("characterTag"),
-                remark = item.optString("remark"),
-                purchaseChannel = item.optString("purchaseChannel"),
-                purchaseShop = item.optString("purchaseShop"),
-                purchaseDate = item.optLong("purchaseDate"),
-                purchasePrice = item.optDouble("purchasePrice"),
-                purchaseQuantity = item.optInt("purchaseQuantity"),
-                purchaseShipping = item.optDouble("purchaseShipping"),
+                id = item.optLong("id"), name = item.optString("name"),
+                category = item.optString("category"), type = item.optString("type"),
+                ipName = item.optString("ipName"), seriesName = item.optString("seriesName"),
+                characterTag = item.optString("characterTag"), remark = item.optString("remark"),
+                purchaseChannel = item.optString("purchaseChannel"), purchaseShop = item.optString("purchaseShop"),
+                purchaseDate = item.optLong("purchaseDate"), purchasePrice = item.optDouble("purchasePrice"),
+                purchaseQuantity = item.optInt("purchaseQuantity"), purchaseShipping = item.optDouble("purchaseShipping"),
                 expectedPrice = item.optDouble("expectedPrice"),
                 sellPrice = if (item.has("sellPrice")) item.optDouble("sellPrice") else null,
                 sellQuantity = if (item.has("sellQuantity")) item.optInt("sellQuantity") else null,
@@ -264,20 +306,12 @@ object BackupManager {
                 sellDate = if (item.has("sellDate")) item.optLong("sellDate") else null,
                 buyerInfo = if (item.has("buyerInfo")) item.optString("buyerInfo") else null,
                 sellRemark = if (item.has("sellRemark")) item.optString("sellRemark") else null,
-                status = item.optString("status"),
-                storageStatus = item.optString("storageStatus"),
+                status = item.optString("status"), storageStatus = item.optString("storageStatus"),
                 imageFilenames = (0 until item.optJSONArray("imageFilenames").length())
                     .map { item.optJSONArray("imageFilenames").getString(it) },
-                createdAt = item.optLong("createdAt"),
-                updatedAt = item.optLong("updatedAt")
+                createdAt = item.optLong("createdAt"), updatedAt = item.optLong("updatedAt")
             ))
         }
         return Manifest(version, timestamp, collectibles)
     }
 }
-
-data class Manifest(
-    val version: Int,
-    val timestamp: Long,
-    val collectibles: List<CollectibleRecord>
-)
