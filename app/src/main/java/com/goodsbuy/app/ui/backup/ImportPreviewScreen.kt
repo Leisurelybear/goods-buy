@@ -22,7 +22,7 @@ import com.goodsbuy.app.util.CollectibleRecord
 fun ImportPreviewScreen(
     preview: ImportPreviewResult,
     forceImportDuplicates: Boolean,
-    onToggleDuplicate: (Boolean) -> Unit,
+    onToggleForceImport: (Boolean) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -46,7 +46,7 @@ fun ImportPreviewScreen(
                         Text("导入重复项", style = MaterialTheme.typography.labelMedium)
                         Switch(
                             checked = forceImportDuplicates,
-                            onCheckedChange = onToggleDuplicate
+                            onCheckedChange = onToggleForceImport
                         )
                     }
                 }

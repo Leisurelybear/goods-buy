@@ -30,6 +30,7 @@ import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.ui.backup.ImportAction
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
+import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.BackupManager
 import com.goodsbuy.app.util.CollectibleRecord
@@ -253,114 +254,6 @@ fun ProfileScreen(
     }
 }
 
-@Composable
-fun ImportPreviewScreen(
-    preview: ImportPreviewResult,
-    forceImportDuplicates: Boolean,
-    onToggleForceImport: (Boolean) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Summary card
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("导入预览", style = MaterialTheme.typography.titleMedium)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("总计", style = MaterialTheme.typography.bodyLarge)
-                    Text("${preview.total} 条", style = MaterialTheme.typography.bodyLarge)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("将导入", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("${preview.willImport} 条", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("将跳过", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${preview.willSkip} 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-
-        // Toggle for duplicates
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("强制导入重复项（自动添加后缀）", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = forceImportDuplicates, onCheckedChange = onToggleForceImport)
-        }
-
-        // List
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(preview.items) { item ->
-                ImportPreviewRow(item.record, item.action, item.reason)
-            }
-        }
-
-        // Confirm button
-        Button(
-            onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            enabled = preview.willImport > 0
-        ) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("确认导入 ${preview.willImport} 条藏品")
-        }
-    }
-}
-
-@Composable
-fun ImportPreviewRow(record: CollectibleRecord, action: ImportAction, reason: String) {
-    val bgColor = if (action == ImportAction.IMPORT) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-    } else {
-        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-    }
-
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = bgColor)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(record.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    if (record.ipName.isNotEmpty()) {
-                        Text(record.ipName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (record.seriesName.isNotEmpty()) {
-                        Text(record.seriesName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                if (action == ImportAction.IMPORT) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                } else {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                }
-            }
-            if (reason.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp))
-                    Text(reason, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
