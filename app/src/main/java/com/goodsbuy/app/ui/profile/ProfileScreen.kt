@@ -58,7 +58,7 @@ fun ProfileScreen(
             importedUri = it
             scope.launch {
                 try {
-                    importPreview = BackupManager.previewImport(context, it, dao, forceImportDuplicates)
+                    viewModel.previewImport(it)
                 } catch (e: Exception) {
                     scope.launch { snackbarHostState.showSnackbar("解析备份文件失败: ${e.message}") }
                 }
@@ -75,7 +75,7 @@ fun ProfileScreen(
         }
         scope.launch {
             try {
-                val collectibles = repository.getAllCollectibles().first()
+                viewModel.exportBackup(uri, { snackbarHostState.showSnackbar("导出成功") }, { message -> snackbarHostState.showSnackbar("导出失败: " + message) })
                 val success = BackupManager.export(context, collectibles, uri)
                 if (success) {
                     snackbarHostState.showSnackbar("导出成功")
@@ -171,7 +171,7 @@ fun ProfileScreen(
                         scope.launch {
                             val uri = importedUri!!
                             val result = runCatching {
-                                BackupManager.import(context, uri, dao, forceImportDuplicates)
+                                viewModel.confirmImport({ count -> snackbarHostState.showSnackbar("成功导入 " + count + " 条藏品") }, { message -> snackbarHostState.showSnackbar("导入失败: " + message) })
                             }
                             importPreview = null
                             importedUri = null
