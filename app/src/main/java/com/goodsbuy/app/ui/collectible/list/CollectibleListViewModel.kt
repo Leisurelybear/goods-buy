@@ -6,6 +6,7 @@ import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -14,6 +15,7 @@ import kotlinx.datetime.toLocalDateTime
 import java.io.File
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CollectibleListViewModel @Inject constructor(
     private val repository: CollectibleRepository
