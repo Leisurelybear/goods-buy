@@ -34,8 +34,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: () -> Unit = {},
-    repository: CollectibleRepository = hiltViewModel(),
-    dao: CollectibleDao = hiltViewModel()
+    viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     var showSettings by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
