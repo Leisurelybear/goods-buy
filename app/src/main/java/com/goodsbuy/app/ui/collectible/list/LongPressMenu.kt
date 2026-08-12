@@ -55,16 +55,16 @@ fun LongPressMenu(
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
             MenuRow(icon = Icons.Default.Edit, label = "编辑", onClick = { onEdit(); onDismiss() })
             MenuRow(icon = Icons.Default.ContentCopy, label = "复制藏品", onClick = { onDuplicate(); onDismiss() })
             MenuRow(icon = Icons.Default.Delete, label = "删除", onClick = { onDelete(); onDismiss() }, isDanger = true)
             Spacer(modifier = Modifier.height(4.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
             MenuRow(
-                icon = Icons.Default.CheckboxMultipleMark,
+                icon = Icons.Default.SelectAll,
                 label = "批量选择",
                 onClick = { onBatchSelect() },
                 modifier = Modifier.fillMaxWidth()

@@ -2,7 +2,7 @@ package com.goodsbuy.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectLongPressTouchSlop
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,7 +47,7 @@ fun CollectibleCard(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(
                 if (onLongPress != null) Modifier.pointerInput(Unit) {
-                    detectLongPressTouchSlop(onLongPress = { onLongPress() })
+                    detectTapGestures(onLongPress = { onLongPress() })
                 } else Modifier
             )
             .clickable(enabled = !batchMode || onSelect != null) {
