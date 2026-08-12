@@ -1,8 +1,7 @@
 package com.goodsbuy.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,14 +44,12 @@ fun CollectibleCard(
             .aspectRatio(0.75f)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .then(
-                if (onLongPress != null) Modifier.pointerInput(Unit) {
-                    detectTapGestures(onLongPress = { onLongPress() })
-                } else Modifier
+            .combinedClickable(
+                onClick = { if (!batchMode) onClick() },
+                onLongClick = { if (onLongPress != null) onLongPress() },
+                enabled = !batchMode || onSelect != null
             )
-            .clickable(enabled = !batchMode || onSelect != null) {
-                if (batchMode) onSelect?.invoke() else onClick()
-            },
+,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
