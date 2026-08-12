@@ -6,5 +6,7 @@ data class CollectibleListUiState(
     val collectibles: List<Collectible> = emptyList(),
     val isLoading: Boolean = true,
     val searchQuery: String = "",
-    val selectedStatusFilter: String? = null
+    val selectedStatusFilter: String? = null,
+    val isBatchMode: Boolean = false,
+    val selectedIds: Set<Long> = emptySet()
 )
