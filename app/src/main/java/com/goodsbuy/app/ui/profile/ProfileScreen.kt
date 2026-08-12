@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Info
@@ -20,32 +19,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.goodsbuy.app.data.db.CollectibleDao
-import com.goodsbuy.app.domain.repository.CollectibleRepository
-import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
-import com.goodsbuy.app.util.BackupManager
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: () -> Unit = {},
-    viewModel: ProfileViewModel = hiltViewModel(),
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
     var showSettings by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-
-    // Import preview state
-    var importPreview by remember { mutableStateOf<ImportPreviewResult?>(null) }
-    var forceImportDuplicates by remember { mutableStateOf(false) }
-    var importedUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(preferencesRepository) {
         prefs = preferencesRepository.preferencesState.value
@@ -55,53 +41,36 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            importedUri = it
-            scope.launch {
-                try {
-                    viewModel.previewImport(it)
-                } catch (e: Exception) {
-                    scope.launch { snackbarHostState.showSnackbar("解析备份文件失败: ${e.message}") }
-                }
-            }
+            viewModel.setImportedUri(it)
+            viewModel.previewImport(it)
         }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri: Uri? ->
-        if (uri == null) {
-            scope.launch { snackbarHostState.showSnackbar("取消导出") }
-            return@rememberLauncherForActivityResult
-        }
-        scope.launch {
-            try {
-                viewModel.exportBackup(uri, { snackbarHostState.showSnackbar("导出成功") }, { message -> snackbarHostState.showSnackbar("导出失败: " + message) })
-                val success = BackupManager.export(context, collectibles, uri)
-                if (success) {
-                    snackbarHostState.showSnackbar("导出成功")
-                } else {
-                    snackbarHostState.showSnackbar("导出失败")
-                }
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("导出失败: ${e.message}")
-            }
-        }
+        if (uri == null) return@rememberLauncherForActivityResult
+        viewModel.exportBackup(
+            uri = uri,
+            onSuccess = { snackbarHostState.showSnackbar("导出成功") },
+            onFailure = { message -> snackbarHostState.showSnackbar("导出失败: $message") }
+        )
     }
+
+    // Collect state from ViewModel
+    val currentImportPreview by viewModel.importPreview.collectAsState()
+    val currentForceImport by viewModel.forceImportDuplicates.collectAsState()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (showSettings) "显示设置" else if (importPreview != null) "导入预览" else "我的") },
+                title = { Text(if (showSettings) "显示设置" else if (currentImportPreview != null) "导入预览" else "我的") },
                 navigationIcon = {
-                    if (showSettings || importPreview != null) {
+                    if (showSettings || currentImportPreview != null) {
                         IconButton(onClick = {
-                            if (importPreview != null) {
-                                importPreview = null
-                                importedUri = null
-                            } else {
-                                showSettings = false
-                            }
+                            if (currentImportPreview != null) viewModel.clearPreview()
+                            else showSettings = false
                         }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                         }
@@ -161,34 +130,19 @@ fun ProfileScreen(
                         SettingToggleRow("显示状态", prefs.showStatus) { prefs = prefs.copy(showStatus = it); preferencesRepository.save(prefs) }
                     }
                 }
-            } else if (importPreview != null && importedUri != null) {
+            } else if (currentImportPreview != null) {
                 // Import preview screen
                 ImportPreviewScreen(
-                    preview = importPreview!!,
-                    forceImportDuplicates = forceImportDuplicates,
-                    onToggleForceImport = { forceImportDuplicates = it },
+                    preview = currentImportPreview!!,
+                    forceImportDuplicates = currentForceImport,
+                    onToggleForceImport = { viewModel.setForceImportDuplicates(it) },
                     onConfirm = {
-                        scope.launch {
-                            val uri = importedUri!!
-                            val result = runCatching {
-                                viewModel.confirmImport({ count -> snackbarHostState.showSnackbar("成功导入 " + count + " 条藏品") }, { message -> snackbarHostState.showSnackbar("导入失败: " + message) })
-                            }
-                            importPreview = null
-                            importedUri = null
-                            result.fold(
-                                onSuccess = { count ->
-                                    scope.launch { snackbarHostState.showSnackbar("成功导入 $count 条藏品") }
-                                },
-                                onFailure = { e ->
-                                    scope.launch { snackbarHostState.showSnackbar("导入失败: ${e.message}") }
-                                }
-                            )
-                        }
+                        viewModel.confirmImport(
+                            onSuccess = { count -> snackbarHostState.showSnackbar("成功导入 $count 条藏品") },
+                            onFailure = { message -> snackbarHostState.showSnackbar("导入失败: $message") }
+                        )
                     },
-                    onDismiss = {
-                        importPreview = null
-                        importedUri = null
-                    }
+                    onDismiss = { viewModel.clearPreview() }
                 )
             } else {
                 // Main profile screen
