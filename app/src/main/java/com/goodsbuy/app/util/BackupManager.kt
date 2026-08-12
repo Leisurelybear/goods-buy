@@ -47,18 +47,20 @@ object BackupManager {
 
     fun export(context: Context, collectibles: List<Collectible>, outputUri: Uri): Boolean {
         return try {
-            val imagesDir = File(context.filesDir, "images")
             val backupDir = File(context.cacheDir, "backup_export")
             backupDir.mkdirs()
 
+            // First, copy all images to temp dir
             val recordList = collectibles.map { c ->
                 val filenames = mutableListOf<String>()
                 c.imagePaths.forEach { path ->
                     val src = File(path)
                     if (src.exists()) {
-                        val dest = File(backupDir, src.name)
-                        src.copyTo(dest, overwrite = true)
-                        filenames.add(dest.name)
+                        // Use unique filename to avoid conflicts
+                        val uniqueName = "${System.currentTimeMillis()}_${src.name}"
+                        val dest = File(backupDir, uniqueName)
+                        src.copyTo(dest, overwrite = false)
+                        filenames.add(uniqueName)
                     }
                 }
                 CollectibleRecord(
@@ -76,24 +78,34 @@ object BackupManager {
                 )
             }
 
+            // Build JSON first, then write to ZIP
             val json = buildJson(BACKUP_VERSION, System.currentTimeMillis(), recordList)
 
-            java.util.zip.ZipOutputStream(BufferedOutputStream(context.contentResolver.openOutputStream(outputUri))).use { zos ->
-                zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
-                zos.write(json.toByteArray(Charsets.UTF_8))
-                zos.closeEntry()
-
-                backupDir.listFiles()?.forEach { file ->
-                    zos.putNextEntry(java.util.zip.ZipEntry("images/${file.name}"))
-                    file.inputStream().use { it.copyTo(zos) }
+            // Write to output URI
+            context.contentResolver.openOutputStream(outputUri)?.use { outStream ->
+                java.util.zip.ZipOutputStream(BufferedOutputStream(outStream)).use { zos ->
+                    zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+                    zos.write(json.toByteArray(Charsets.UTF_8))
                     zos.closeEntry()
+
+                    backupDir.listFiles()?.forEach { file ->
+                        zos.putNextEntry(java.util.zip.ZipEntry("images/${file.name}"))
+                        file.inputStream().use { it.copyTo(zos) }
+                        zos.closeEntry()
+                    }
+                    zos.finish()
                 }
             }
 
+            // Cleanup temp dir
             backupDir.deleteRecursively()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Export failed", e)
+            // Cleanup on failure
+            try {
+                File(context.cacheDir, "backup_export").deleteRecursively()
+            } catch (_: Exception) {}
             false
         }
     }
@@ -106,6 +118,7 @@ object BackupManager {
             val tempDir = File(context.cacheDir, "backup_import")
             tempDir.mkdirs()
 
+            // Extract ZIP to temp dir
             context.contentResolver.openInputStream(inputUri)?.use { ins ->
                 java.util.zip.ZipInputStream(BufferedInputStream(ins)).use { zis ->
                     var entry: java.util.zip.ZipEntry? = zis.nextEntry
@@ -128,15 +141,25 @@ object BackupManager {
 
             val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
 
+            // Map old image filenames to new paths
             val imageMap = mutableMapOf<String, String>()
             File(tempDir, "images").listFiles()?.forEach { file ->
-                val newFile = File(imagesDir, "${System.currentTimeMillis()}_${file.name}")
-                file.copyTo(newFile, overwrite = true)
+                // Use timestamp + original name to avoid conflicts
+                val newFileName = "${System.currentTimeMillis()}_${file.name}"
+                val newFile = File(imagesDir, newFileName)
+                file.copyTo(newFile, overwrite = false)
                 imageMap[file.name] = newFile.absolutePath
             }
 
             var importedCount = 0
             manifest.collectibles.forEach { record ->
+                // Skip if name + ipName + seriesName already exists (basic dedup)
+                val existing = dao.searchByName(record.name)
+                if (existing.isNotEmpty()) {
+                    Log.d(TAG, "Skipping duplicate: ${record.name}")
+                    return@forEach
+                }
+
                 val newImagePaths = record.imageFilenames.mapNotNull { fn -> imageMap[fn] }
                 val entity = CollectibleEntity(
                     name = record.name, category = record.category, type = record.type,
@@ -156,10 +179,16 @@ object BackupManager {
                 importedCount++
             }
 
+            // Cleanup temp dir
             tempDir.deleteRecursively()
+
             Result.success(importedCount)
         } catch (e: Exception) {
             Log.e(TAG, "Import failed", e)
+            // Cleanup on failure
+            try {
+                File(context.cacheDir, "backup_import").deleteRecursively()
+            } catch (_: Exception) {}
             Result.failure(e)
         }
     }

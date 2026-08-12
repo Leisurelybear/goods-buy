@@ -15,10 +15,10 @@ interface CollectibleDao {
     @Query("SELECT * FROM collectibles WHERE status = :status ORDER BY createdAt DESC")
     fun getCollectiblesByStatus(status: String): Flow<List<CollectibleEntity>>
 
-    @Query("SELECT * FROM collectibles WHERE name LIKE \'%\' || :query || \'%\' OR seriesName LIKE \'%\' || :query || \'%\' OR ipName LIKE \'%\' || :query || \'%\' OR characterTag LIKE \'%\' || :query || \'%\' OR purchaseShop LIKE \'%\' || :query || \'%\' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM collectibles WHERE name LIKE '%' || :query || '%' OR seriesName LIKE '%' || :query || '%' OR ipName LIKE '%' || :query || '%' OR characterTag LIKE '%' || :query || '%' OR purchaseShop LIKE '%' || :query || '%' ORDER BY createdAt DESC")
     fun searchCollectibles(query: String): Flow<List<CollectibleEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertCollectible(collectible: CollectibleEntity): Long
 
     @Update
@@ -30,6 +30,9 @@ interface CollectibleDao {
     @Query("DELETE FROM collectibles WHERE id = :id")
     suspend fun deleteCollectibleById(id: Long)
 
-    @Query("SELECT * FROM collectibles WHERE status = \'SOLD\' ORDER BY sellDate DESC")
+    @Query("SELECT * FROM collectibles WHERE status = 'SOLD' ORDER BY sellDate DESC")
     fun getSoldCollectibles(): Flow<List<CollectibleEntity>>
+
+    @Query("SELECT * FROM collectibles WHERE name = :name LIMIT 1")
+    suspend fun searchByName(name: String): List<CollectibleEntity>
 }

@@ -21,8 +21,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.data.db.CollectibleDao
+import com.goodsbuy.app.domain.model.Collectible
+import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.BackupManager
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +33,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: () -> Unit = {},
+    repository: CollectibleRepository = hiltViewModel(),
     dao: CollectibleDao = hiltViewModel()
 ) {
     var showSettings by remember { mutableStateOf(false) }
@@ -56,6 +60,28 @@ fun ProfileScreen(
                     snackbarHostState.showSnackbar("导入失败: ${e.message}")
                 }
             )
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        if (uri == null) {
+            scope.launch { snackbarHostState.showSnackbar("取消导出") }
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            try {
+                val collectibles = repository.getAllCollectibles().first()
+                val success = BackupManager.export(context, collectibles, uri)
+                if (success) {
+                    snackbarHostState.showSnackbar("导出成功")
+                } else {
+                    snackbarHostState.showSnackbar("导出失败")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("导出失败: ${e.message}")
+            }
         }
     }
 
@@ -145,12 +171,13 @@ fun ProfileScreen(
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable {
                                 scope.launch {
-                                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                                        addCategory(Intent.CATEGORY_OPENABLE)
-                                        type = "application/zip"
-                                        putExtra(Intent.EXTRA_TITLE, "谷的拜备份_${System.currentTimeMillis()}.zip")
+                                    try {
+                                        val collectibles = repository.getAllCollectibles().first()
+                                        val fileName = "谷的拜备份_${System.currentTimeMillis()}.zip"
+                                        exportLauncher.launch(fileName)
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("获取藏品列表失败: ${e.message}")
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "保存备份"))
                                 }
                             },
                             verticalAlignment = Alignment.CenterVertically
@@ -205,3 +232,4 @@ fun SettingToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
