@@ -9,6 +9,7 @@ import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import com.goodsbuy.app.util.BackupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -17,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val repository: CollectibleRepository,
     private val dao: CollectibleDao
 ) : ViewModel() {
