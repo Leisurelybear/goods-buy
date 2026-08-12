@@ -5,35 +5,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.domain.repository.CollectibleRepository
-import com.goodsbuy.app.ui.backup.ImportAction
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.BackupManager
-import com.goodsbuy.app.util.CollectibleRecord
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -54,7 +46,6 @@ fun ProfileScreen(
     // Import preview state
     var importPreview by remember { mutableStateOf<ImportPreviewResult?>(null) }
     var forceImportDuplicates by remember { mutableStateOf(false) }
-    var isImporting by remember { mutableStateOf(false) }
     var importedUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(preferencesRepository) {
@@ -64,13 +55,14 @@ fun ProfileScreen(
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { importedUri = it }
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            try {
-                importPreview = BackupManager.previewImport(context, uri, dao, forceImportDuplicates)
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("解析备份文件失败: ${e.message}")
+        uri?.let {
+            importedUri = it
+            scope.launch {
+                try {
+                    importPreview = BackupManager.previewImport(context, it, dao, forceImportDuplicates)
+                } catch (e: Exception) {
+                    scope.launch { snackbarHostState.showSnackbar("解析备份文件失败: ${e.message}") }
+                }
             }
         }
     }
@@ -105,8 +97,12 @@ fun ProfileScreen(
                 navigationIcon = {
                     if (showSettings || importPreview != null) {
                         IconButton(onClick = {
-                            if (importPreview != null) importPreview = null
-                            else showSettings = false
+                            if (importPreview != null) {
+                                importPreview = null
+                                importedUri = null
+                            } else {
+                                showSettings = false
+                            }
                         }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                         }
@@ -173,24 +169,27 @@ fun ProfileScreen(
                     forceImportDuplicates = forceImportDuplicates,
                     onToggleForceImport = { forceImportDuplicates = it },
                     onConfirm = {
-                        isImporting = true
                         scope.launch {
                             val uri = importedUri!!
-                            val result = BackupManager.import(context, uri, dao, forceImportDuplicates)
-                            isImporting = false
+                            val result = runCatching {
+                                BackupManager.import(context, uri, dao, forceImportDuplicates)
+                            }
                             importPreview = null
                             importedUri = null
                             result.fold(
                                 onSuccess = { count ->
-                                    snackbarHostState.showSnackbar("成功导入 $count 条藏品")
+                                    scope.launch { snackbarHostState.showSnackbar("成功导入 $count 条藏品") }
                                 },
                                 onFailure = { e ->
-                                    snackbarHostState.showSnackbar("导入失败: ${e.message}")
+                                    scope.launch { snackbarHostState.showSnackbar("导入失败: ${e.message}") }
                                 }
                             )
                         }
                     },
-                    onDismiss = { importPreview = null; importedUri = null }
+                    onDismiss = {
+                        importPreview = null
+                        importedUri = null
+                    }
                 )
             } else {
                 // Main profile screen
@@ -253,7 +252,6 @@ fun ProfileScreen(
         }
     }
 }
-
 
 @Composable
 fun SettingToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
