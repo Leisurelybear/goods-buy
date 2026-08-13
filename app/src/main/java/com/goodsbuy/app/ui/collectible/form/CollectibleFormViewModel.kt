@@ -99,6 +99,11 @@ class CollectibleFormViewModel @Inject constructor(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
+            val sellDate = when {
+                state.status == OrderStatus.SOLD && state.sellDate == null -> System.currentTimeMillis()
+                state.status != OrderStatus.SOLD -> null
+                else -> state.sellDate
+            }
             val collectible = Collectible(
                 id = state.id ?: 0, name = state.name, category = state.category, type = state.type,
                 ipName = state.ipName, seriesName = state.seriesName, characterTag = state.characterTag,
@@ -109,7 +114,7 @@ class CollectibleFormViewModel @Inject constructor(
                 expectedPrice = state.expectedPrice.toDoubleOrNull() ?: 0.0,
                 sellPrice = state.sellPrice.toDoubleOrNull(), sellQuantity = state.sellQuantity.toIntOrNull(),
                 sellShipping = state.sellShipping.toDoubleOrNull(), isFreeShipping = state.isFreeShipping,
-                sellDate = state.sellDate, buyerInfo = state.buyerInfo, sellRemark = state.sellRemark,
+                sellDate = sellDate, buyerInfo = state.buyerInfo.ifBlank { null }, sellRemark = state.sellRemark.ifBlank { null },
                 status = state.status, storageStatus = state.storageStatus, imagePaths = state.imagePaths,
                 createdAt = if (state.id != null) 0 else System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()

@@ -2,7 +2,9 @@ package com.goodsbuy.app.ui.backup
 
 import com.goodsbuy.app.util.CollectibleRecord
 
-enum class ImportAction { IMPORT, SKIP }
+enum class ImportAction { IMPORT, OVERWRITE, SKIP }
+
+enum class ImportMode { SKIP, ADD, OVERWRITE }
 
 data class ImportPreviewItem(
     val record: CollectibleRecord,

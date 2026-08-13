@@ -15,8 +15,10 @@ class GetCategoryStatsUseCase @Inject constructor() {
             }
         }.map { (name, items) ->
             val investment = items.sumOf { it.purchasePrice * it.purchaseQuantity + it.purchaseShipping }
-            val revenue = items.filter { it.status.name == "SOLD" }.sumOf { (it.sellPrice ?: 0.0) * (it.sellQuantity ?: 0) }
-            CategoryStat(categoryName = name, count = items.size, investment = investment, revenue = revenue, profit = revenue - investment)
+            val soldItems = items.filter { it.status.name == "SOLD" }
+            val revenue = soldItems.sumOf { (it.sellPrice ?: 0.0) * (it.sellQuantity ?: 0) }
+            val costOfSold = soldItems.sumOf { it.purchasePrice * it.purchaseQuantity + it.purchaseShipping }
+            CategoryStat(categoryName = name, count = items.size, investment = investment, revenue = revenue, profit = revenue - costOfSold)
         }.sortedByDescending { it.profit }
     }
 }

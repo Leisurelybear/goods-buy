@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface CollectibleRepository {
     fun getAllCollectibles(): Flow<List<Collectible>>
+    suspend fun getAllCollectiblesOnce(): List<Collectible>
     suspend fun getCollectibleById(id: Long): Collectible?
     fun getCollectiblesByStatus(status: String): Flow<List<Collectible>>
     fun searchCollectibles(query: String): Flow<List<Collectible>>

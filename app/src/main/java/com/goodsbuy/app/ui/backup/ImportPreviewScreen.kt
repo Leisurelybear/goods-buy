@@ -3,10 +3,11 @@ package com.goodsbuy.app.ui.backup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,39 +16,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.goodsbuy.app.ui.backup.ImportMode
 import com.goodsbuy.app.util.CollectibleRecord
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportPreviewScreen(
     preview: ImportPreviewResult,
-    forceImportDuplicates: Boolean,
-    onToggleForceImport: (Boolean) -> Unit,
+    importMode: ImportMode,
+    onModeChange: (ImportMode) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isImporting: Boolean = false,
+    importProgress: Float = 0f
 ) {
-    var selectAll by remember { mutableStateOf(false) }
+    val modes = listOf(
+        ImportMode.SKIP to "跳过重复",
+        ImportMode.ADD to "新增重复",
+        ImportMode.OVERWRITE to "覆盖重复"
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("导入预览") },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = onDismiss, enabled = !isImporting) {
                         Icon(Icons.Default.Close, contentDescription = "关闭")
-                    }
-                },
-                actions = {
-                    // Toggle duplicate import
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("导入重复项", style = MaterialTheme.typography.labelMedium)
-                        Switch(
-                            checked = forceImportDuplicates,
-                            onCheckedChange = onToggleForceImport
-                        )
                     }
                 }
             )
@@ -76,7 +71,7 @@ fun ImportPreviewScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("将导入", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("将导入/覆盖", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text("${preview.willImport} 条", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                     Row(
@@ -85,6 +80,22 @@ fun ImportPreviewScreen(
                     ) {
                         Text("将跳过", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${preview.willSkip} 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    Text("重复项处理", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        modes.forEach { (mode, label) ->
+                            FilterChip(
+                                selected = importMode == mode,
+                                onClick = { onModeChange(mode) },
+                                label = { Text(label) }
+                            )
+                        }
                     }
                 }
             }
@@ -95,7 +106,7 @@ fun ImportPreviewScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(preview.items, key = { it.record.id }) { item ->
+                itemsIndexed(preview.items, key = { index, _ -> index }) { _, item ->
                     ImportPreviewRow(
                         record = item.record,
                         action = item.action,
@@ -104,15 +115,30 @@ fun ImportPreviewScreen(
                 }
             }
 
-            // Confirm button
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                enabled = preview.willImport > 0
-            ) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("确认导入 ${preview.willImport} 条藏品")
+            // Confirm button / progress
+            if (isImporting) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    val percent = (importProgress * 100).toInt()
+                    Text(
+                        "正在导入… $percent%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    LinearProgressIndicator(
+                        progress = { importProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    enabled = preview.willImport > 0
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("确认导入 ${preview.willImport} 条藏品")
+                }
             }
         }
     }
@@ -120,10 +146,22 @@ fun ImportPreviewScreen(
 
 @Composable
 fun ImportPreviewRow(record: CollectibleRecord, action: ImportAction, reason: String) {
-    val bgColor = if (action == ImportAction.IMPORT) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-    } else {
-        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+    val (bgColor, icon, tint) = when (action) {
+        ImportAction.IMPORT -> Triple(
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+            Icons.Default.CheckCircle,
+            MaterialTheme.colorScheme.primary
+        )
+        ImportAction.OVERWRITE -> Triple(
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+            Icons.Default.Sync,
+            MaterialTheme.colorScheme.tertiary
+        )
+        ImportAction.SKIP -> Triple(
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+            Icons.Default.Close,
+            MaterialTheme.colorScheme.error
+        )
     }
 
     Card(
@@ -157,19 +195,11 @@ fun ImportPreviewRow(record: CollectibleRecord, action: ImportAction, reason: St
                         )
                     }
                 }
-                if (action == ImportAction.IMPORT) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = tint
+                )
             }
             if (reason.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -180,13 +210,13 @@ fun ImportPreviewRow(record: CollectibleRecord, action: ImportAction, reason: St
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = if (action == ImportAction.SKIP) MaterialTheme.colorScheme.error else tint,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         reason,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = if (action == ImportAction.SKIP) MaterialTheme.colorScheme.error else tint
                     )
                 }
             }

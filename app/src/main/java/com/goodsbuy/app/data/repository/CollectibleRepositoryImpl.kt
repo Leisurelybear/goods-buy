@@ -18,6 +18,9 @@ class CollectibleRepositoryImpl @Inject constructor(
     override fun getAllCollectibles(): Flow<List<Collectible>> =
         collectibleDao.getAllCollectibles().map { list -> list.map { it.toDomain() } }
 
+    override suspend fun getAllCollectiblesOnce(): List<Collectible> =
+        collectibleDao.getAllCollectiblesOnce().map { it.toDomain() }
+
     override suspend fun getCollectibleById(id: Long): Collectible? =
         collectibleDao.getCollectibleById(id)?.toDomain()
 

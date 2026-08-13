@@ -37,12 +37,29 @@ fun CollectibleDetailScreen(
                 navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") } },
                 actions = {
                     IconButton(onClick = onNavigateToEdit) { Icon(Icons.Default.Edit, contentDescription = "编辑") }
-                    IconButton(onClick = { viewModel.deleteCollectible() }) { Icon(Icons.Default.Delete, contentDescription = "删除") }
+                    IconButton(onClick = { viewModel.requestDelete() }) { Icon(Icons.Default.Delete, contentDescription = "删除") }
                 }
             )
         }
     ) { padding ->
         val collectible = uiState.collectible
+
+        if (uiState.showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDeleteDialog() },
+                title = { Text("确认删除") },
+                text = { Text("确定要删除「${collectible?.name}」吗？此操作不可撤销，其图片也会被删除。") },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.deleteCollectible(onDeleted = onNavigateBack) }) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissDeleteDialog() }) { Text("取消") }
+                }
+            )
+        }
+
         if (collectible == null) {
             Box(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
@@ -90,6 +107,27 @@ fun CollectibleDetailScreen(
                         DetailRow("购入运费", "¥${collectible.purchaseShipping}")
                         DetailRow("心理预期价", "¥${collectible.expectedPrice}")
                         DetailRow("总成本", "¥${collectible.purchasePrice * collectible.purchaseQuantity + collectible.purchaseShipping}")
+                    }
+                }
+
+                if (collectible.sellPrice != null || collectible.sellDate != null) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("卖出信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            collectible.sellPrice?.let { DetailRow("售出单价", "¥$it") }
+                            collectible.sellQuantity?.let { DetailRow("售出数量", "$it") }
+                            if (collectible.isFreeShipping) {
+                                DetailRow("运费", "包邮（卖家承担）")
+                            } else {
+                                collectible.sellShipping?.let { DetailRow("售出运费", "¥$it") }
+                            }
+                            collectible.sellDate?.let {
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                DetailRow("售出日期", sdf.format(java.util.Date(it)))
+                            }
+                            collectible.buyerInfo?.let { if (it.isNotBlank()) DetailRow("买家信息", it) }
+                            collectible.sellRemark?.let { if (it.isNotBlank()) DetailRow("售出备注", it) }
+                        }
                     }
                 }
 

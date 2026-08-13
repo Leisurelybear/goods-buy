@@ -6,7 +6,8 @@ import javax.inject.Inject
 
 class GetMonthlyStatsUseCase @Inject constructor() {
     operator fun invoke(collectibles: List<Collectible>): List<MonthlyStat> {
-        val grouped = collectibles.groupBy {
+        val valid = collectibles.filter { it.purchaseDate > 0 }
+        val grouped = valid.groupBy {
             val date = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
             date.format(java.util.Date(it.purchaseDate))
         }

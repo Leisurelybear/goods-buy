@@ -6,17 +6,20 @@ import com.goodsbuy.app.domain.model.OrderStatus
 import javax.inject.Inject
 
 class GetDashboardSummaryUseCase @Inject constructor() {
+    private val soldStatuses = setOf(OrderStatus.SOLD, OrderStatus.GIFT, OrderStatus.LOST)
+
     operator fun invoke(collectibles: List<Collectible>): DashboardSummary {
         val totalInvestment = collectibles.sumOf { it.purchasePrice * it.purchaseQuantity + it.purchaseShipping }
         val soldOnes = collectibles.filter { it.status == OrderStatus.SOLD }
         val totalRevenue = soldOnes.sumOf { (it.sellPrice ?: 0.0) * (it.sellQuantity ?: 0) + if (it.isFreeShipping) 0.0 else (it.sellShipping ?: 0.0) }
-        val holdingValue = collectibles.filter { it.status == OrderStatus.OWNED }.sumOf { it.expectedPrice }
-        val totalProfit = totalRevenue - totalInvestment
-        val totalProfitRate = if (totalInvestment > 0) (totalProfit / totalInvestment) * 100 else 0.0
+        val costOfSold = soldOnes.sumOf { it.purchasePrice * it.purchaseQuantity + it.purchaseShipping }
+        val holdingValue = collectibles.filter { it.status !in soldStatuses }.sumOf { it.expectedPrice }
+        val totalProfit = totalRevenue - costOfSold
+        val totalProfitRate = if (costOfSold > 0) (totalProfit / costOfSold) * 100 else 0.0
         return DashboardSummary(
             totalInvestment = totalInvestment, totalRevenue = totalRevenue, holdingValue = holdingValue,
             totalProfit = totalProfit, totalProfitRate = totalProfitRate, totalCount = collectibles.size,
-            ownedCount = collectibles.count { it.status == OrderStatus.OWNED },
+            ownedCount = collectibles.count { it.status !in soldStatuses },
             soldCount = soldOnes.size
         )
     }

@@ -183,6 +183,54 @@ fun CollectibleFormScreen(
                  modifier = Modifier.fillMaxWidth()
              )
 
+             Text("卖出信息", style = MaterialTheme.typography.titleMedium)
+             NumTextField(
+                 value = uiState.sellPrice,
+                 onValueChange = { viewModel.updateField("sellPrice", it) },
+                 label = "售出单价",
+                 placeholder = "例如：7000",
+                 isDecimal = true,
+                 modifier = Modifier.fillMaxWidth()
+             )
+             NumTextField(
+                 value = uiState.sellQuantity,
+                 onValueChange = { viewModel.updateField("sellQuantity", it) },
+                 label = "售出数量",
+                 placeholder = "例如：1",
+                 modifier = Modifier.fillMaxWidth()
+             )
+             NumTextField(
+                 value = uiState.sellShipping,
+                 onValueChange = { viewModel.updateField("sellShipping", it) },
+                 label = "售出运费",
+                 placeholder = "例如：500（买家承担）",
+                 isDecimal = true,
+                 modifier = Modifier.fillMaxWidth()
+             )
+             Row(
+                 modifier = Modifier.fillMaxWidth(),
+                 horizontalArrangement = Arrangement.SpaceBetween,
+                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+             ) {
+                 Text("包邮（卖家承担运费）", style = MaterialTheme.typography.bodyMedium)
+                 Switch(checked = uiState.isFreeShipping, onCheckedChange = { viewModel.updateFreeShipping(it) })
+             }
+             OutlinedTextField(
+                 value = uiState.buyerInfo,
+                 onValueChange = { viewModel.updateField("buyerInfo", it) },
+                 label = { Text("买家信息") },
+                 placeholder = { Text("例如：闲鱼用户XXX、微博@XXX") },
+                 modifier = Modifier.fillMaxWidth()
+             )
+             OutlinedTextField(
+                 value = uiState.sellRemark,
+                 onValueChange = { viewModel.updateField("sellRemark", it) },
+                 label = { Text("售出备注") },
+                 placeholder = { Text("例如：已发货、买家确认收货") },
+                 modifier = Modifier.fillMaxWidth(),
+                 minLines = 2
+             )
+
             Text("状态", style = MaterialTheme.typography.titleMedium)
             var statusExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = statusExpanded, onExpandedChange = { statusExpanded = it }) {

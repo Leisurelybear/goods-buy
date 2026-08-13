@@ -35,4 +35,7 @@ interface CollectibleDao {
 
     @Query("SELECT * FROM collectibles WHERE name = :name LIMIT 1")
     suspend fun searchByName(name: String): List<CollectibleEntity>
+
+    @Query("SELECT * FROM collectibles")
+    suspend fun getAllCollectiblesOnce(): List<CollectibleEntity>
 }

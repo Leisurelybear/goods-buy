@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
 @OptIn(ExperimentalFoundationApi::class)
@@ -31,11 +32,15 @@ fun CollectibleCard(
     showName: Boolean = true,
     showPrice: Boolean = true,
     showStatus: Boolean = true,
+    fontSize: Int = 1,
     onLongPress: (() -> Unit)? = null,
     isSelected: Boolean = false,
     onSelect: (() -> Unit)? = null,
     batchMode: Boolean = false
 ) {
+    val nameSize = when (fontSize) { 0 -> 11f; 1 -> 12f; else -> 14f }
+    val priceSize = when (fontSize) { 0 -> 9f; 1 -> 10f; else -> 12f }
+    val statusSize = when (fontSize) { 0 -> 9f; 1 -> 10f; else -> 11f }
     Card(
         modifier = modifier
             .width(cardSize)
@@ -43,7 +48,7 @@ fun CollectibleCard(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(
-                onClick = { if (!batchMode) onClick() },
+                onClick = { if (batchMode) onSelect?.invoke() else onClick() },
                 onLongClick = { if (onLongPress != null) onLongPress() },
                 enabled = !batchMode || onSelect != null
             ),
@@ -84,7 +89,7 @@ fun CollectibleCard(
                 ) {
                     Text(
                         text = collectible.status.displayName,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = statusSize.sp),
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -138,7 +143,7 @@ fun CollectibleCard(
                         if (showName) {
                             Text(
                                 text = collectible.name,
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelMedium.copy(fontSize = nameSize.sp),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 maxLines = 1,
@@ -150,7 +155,7 @@ fun CollectibleCard(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "¥${collectible.purchasePrice}",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = priceSize.sp),
                                 color = Color.White.copy(alpha = 0.9f),
                                 maxLines = 1
                             )

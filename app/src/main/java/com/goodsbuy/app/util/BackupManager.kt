@@ -1,5 +1,4 @@
 package com.goodsbuy.app.util
-import kotlinx.coroutines.flow.first
 
 import android.content.Context
 import android.net.Uri
@@ -8,11 +7,13 @@ import com.goodsbuy.app.data.entity.CollectibleEntity
 import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.domain.model.*
 import com.goodsbuy.app.ui.backup.ImportAction
+import com.goodsbuy.app.ui.backup.ImportMode
 import com.goodsbuy.app.ui.backup.ImportPreviewItem
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
+import java.security.MessageDigest
 import java.util.UUID
 
 private const val TAG = "BackupManager"
@@ -53,6 +54,60 @@ data class Manifest(
     val timestamp: Long,
     val collectibles: List<CollectibleRecord>
 )
+
+/** Read a nullable field, returning null for both a missing key and an explicit JSON null. */
+private fun JSONObject.optNullableString(name: String): String? =
+    if (has(name) && !isNull(name)) optString(name) else null
+
+private fun JSONObject.optNullableDouble(name: String): Double? =
+    if (has(name) && !isNull(name)) optDouble(name) else null
+
+private fun JSONObject.optNullableInt(name: String): Int? =
+    if (has(name) && !isNull(name)) optInt(name) else null
+
+private fun JSONObject.optNullableLong(name: String): Long? =
+    if (has(name) && !isNull(name)) optLong(name) else null
+
+/**
+ * Content fingerprint for dedup: combines the fields that distinguish one
+ * collectible from another. Two records with the same name but different
+ * price/date/ip/remark are NOT duplicates.
+ */
+private fun CollectibleRecord.fingerprint(): String {
+    val raw = listOf(
+        name, ipName, seriesName, characterTag,
+        purchaseChannel, purchaseShop, remark,
+        purchasePrice.toString(), purchaseQuantity.toString(), purchaseShipping.toString(),
+        purchaseDate.toString(), status, storageStatus,
+        sellPrice.fp(), sellDate?.toString() ?: "",
+        category, type
+    ).joinToString("|")
+    val md = MessageDigest.getInstance("SHA-1")
+    val bytes = md.digest(raw.toByteArray(Charsets.UTF_8))
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+/** 
+ * Normalizes a nullable Double for fingerprinting. NaN must never leak into the
+ * fingerprint: SQLite stores NaN as NULL, so a record fingerprinted as "NaN"
+ * would never match the same entity fingerprinted as "" after a DB round-trip.
+ */
+private fun Double?.fp(): String = takeIf { it != null && !it.isNaN() }?.toString() ?: ""
+
+/** Fingerprint of a DB entity, matching [CollectibleRecord.fingerprint] field-for-field. */
+private fun CollectibleEntity.fingerprint(): String {
+    val raw = listOf(
+        name, ipName, seriesName, characterTag,
+        purchaseChannel, purchaseShop, remark,
+        purchasePrice.toString(), purchaseQuantity.toString(), purchaseShipping.toString(),
+        purchaseDate.toString(), status, storageStatus,
+        sellPrice.fp(), sellDate?.toString() ?: "",
+        category, type
+    ).joinToString("|")
+    val md = MessageDigest.getInstance("SHA-1")
+    val bytes = md.digest(raw.toByteArray(Charsets.UTF_8))
+    return bytes.joinToString("") { "%02x".format(it) }
+}
 
 object BackupManager {
 
@@ -105,17 +160,20 @@ object BackupManager {
             }
 
             backupDir.deleteRecursively()
+            AppLogger.i("Export", "Done: count=${recordList.size}")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Export failed", e)
+            AppLogger.e("Export", "Failed: ${e.message}", e)
             try { File(context.cacheDir, "backup_export").deleteRecursively() } catch (_: Exception) {}
             false
         }
     }
 
-    suspend fun previewImport(context: Context, inputUri: Uri, dao: CollectibleDao, forceImportDuplicates: Boolean): ImportPreviewResult {
+    suspend fun previewImport(context: Context, inputUri: Uri, dao: CollectibleDao, mode: ImportMode): ImportPreviewResult {
         return try {
             val tempDir = File(context.cacheDir, "backup_preview")
+            if (tempDir.exists()) tempDir.deleteRecursively()
             tempDir.mkdirs()
 
             context.contentResolver.openInputStream(inputUri)?.use { ins ->
@@ -140,14 +198,20 @@ object BackupManager {
 
             val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
 
-            // Get existing names from database
-            val existingItems = dao.getAllCollectibles().first()
-            val existingNames = existingItems.map { it.name }.toSet()
+            // Dedup by content fingerprint, NOT by name alone — many distinct
+            // collectibles share a name (e.g. 64 "运费" entries for different orders).
+            val existingItems = dao.getAllCollectiblesOnce()
+            val existingFingerprints = existingItems.map { it.fingerprint() }.toSet()
 
             val items = manifest.collectibles.map { record ->
-                val isDuplicate = existingNames.contains(record.name)
-                val action = if (forceImportDuplicates || !isDuplicate) ImportAction.IMPORT else ImportAction.SKIP
-                val reason = if (isDuplicate && !forceImportDuplicates) "已存在同名藏品: ${record.name}" else ""
+                val isDuplicate = existingFingerprints.contains(record.fingerprint())
+                val (action, reason) = when {
+                    !isDuplicate -> ImportAction.IMPORT to ""
+                    mode == ImportMode.SKIP -> ImportAction.SKIP to "已存在相同藏品: ${record.name}"
+                    mode == ImportMode.ADD -> ImportAction.IMPORT to "将以新条目添加（保留原条目）"
+                    mode == ImportMode.OVERWRITE -> ImportAction.OVERWRITE to "将覆盖已存在的相同藏品"
+                    else -> ImportAction.IMPORT to ""
+                }
                 ImportPreviewItem(record, action, reason)
             }
 
@@ -156,7 +220,7 @@ object BackupManager {
             ImportPreviewResult(
                 items = items,
                 total = items.size,
-                willImport = items.count { it.action == ImportAction.IMPORT },
+                willImport = items.count { it.action != ImportAction.SKIP },
                 willSkip = items.count { it.action == ImportAction.SKIP }
             )
         } catch (e: Exception) {
@@ -166,12 +230,19 @@ object BackupManager {
         }
     }
 
-    suspend fun import(context: Context, inputUri: Uri, dao: CollectibleDao, forceImportDuplicates: Boolean): Result<Int> {
+    suspend fun import(
+        context: Context,
+        inputUri: Uri,
+        dao: CollectibleDao,
+        mode: ImportMode,
+        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> }
+    ): Result<Int> {
         return try {
             val imagesDir = File(context.filesDir, "images")
             imagesDir.mkdirs()
 
             val tempDir = File(context.cacheDir, "backup_import")
+            if (tempDir.exists()) tempDir.deleteRecursively()
             tempDir.mkdirs()
 
             context.contentResolver.openInputStream(inputUri)?.use { ins ->
@@ -195,10 +266,15 @@ object BackupManager {
             if (!manifestFile.exists()) return Result.failure(IllegalStateException("No manifest found"))
 
             val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
+            val total = manifest.collectibles.size
+
+            // Build fingerprint -> existing entity map for dedup & overwrite lookup.
+            val existingByFingerprint = dao.getAllCollectiblesOnce().associateBy { it.fingerprint() }
+            Log.d(TAG, "Import: existing in DB=${existingByFingerprint.size}, manifest records=${manifest.collectibles.size}")
 
             val imageMap = mutableMapOf<String, String>()
             File(tempDir, "images").listFiles()?.forEach { file ->
-                val uniqueSuffix = if (forceImportDuplicates) "_${UUID.randomUUID().toString().substring(0, 8)}" else ""
+                val uniqueSuffix = if (mode == ImportMode.ADD) "_${UUID.randomUUID().toString().substring(0, 8)}" else ""
                 val newFileName = "${System.currentTimeMillis()}${uniqueSuffix}_${file.name}"
                 val newFile = File(imagesDir, newFileName)
                 file.copyTo(newFile, overwrite = false)
@@ -206,37 +282,71 @@ object BackupManager {
             }
 
             var importedCount = 0
-            manifest.collectibles.forEach { record ->
-                val isDuplicate = dao.searchByName(record.name).isNotEmpty()
-                if (isDuplicate && !forceImportDuplicates) {
-                    Log.d(TAG, "Skipping duplicate: ${record.name}")
-                    return@forEach
-                }
-
+            var skippedCount = 0
+            manifest.collectibles.forEachIndexed { index, record ->
                 val newImagePaths = record.imageFilenames.mapNotNull { fn -> imageMap[fn] }
-                val entity = CollectibleEntity(
-                    name = if (isDuplicate && forceImportDuplicates) "${record.name}_${UUID.randomUUID().toString().substring(0, 4)}" else record.name,
-                    category = record.category, type = record.type,
-                    ipName = record.ipName, seriesName = record.seriesName, characterTag = record.characterTag,
-                    remark = record.remark, purchaseChannel = record.purchaseChannel, purchaseShop = record.purchaseShop,
-                    purchaseDate = record.purchaseDate, purchasePrice = record.purchasePrice,
-                    purchaseQuantity = record.purchaseQuantity, purchaseShipping = record.purchaseShipping,
-                    expectedPrice = record.expectedPrice, sellPrice = record.sellPrice,
-                    sellQuantity = record.sellQuantity, sellShipping = record.sellShipping,
-                    isFreeShipping = record.isFreeShipping, sellDate = record.sellDate,
-                    buyerInfo = record.buyerInfo, sellRemark = record.sellRemark,
-                    status = record.status, storageStatus = record.storageStatus,
-                    imagePaths = newImagePaths.joinToString(","),
-                    createdAt = record.createdAt, updatedAt = record.updatedAt
-                )
-                dao.insertCollectible(entity)
-                importedCount++
+                val fp = record.fingerprint()
+                val existing = existingByFingerprint[fp]
+                val isDuplicate = existing != null
+
+                if (isDuplicate && mode == ImportMode.SKIP) skippedCount++
+
+                when {
+                    isDuplicate && mode == ImportMode.SKIP -> {
+                        Log.d(TAG, "Skipping duplicate: ${record.name} (fp=$fp)")
+                        AppLogger.d("Import", "Skip duplicate: ${record.name}")
+                    }
+                    isDuplicate && mode == ImportMode.OVERWRITE -> {
+                        val updated = existing!!.copy(
+                            name = record.name,
+                            category = record.category, type = record.type,
+                            ipName = record.ipName, seriesName = record.seriesName, characterTag = record.characterTag,
+                            remark = record.remark, purchaseChannel = record.purchaseChannel, purchaseShop = record.purchaseShop,
+                            purchaseDate = record.purchaseDate, purchasePrice = record.purchasePrice,
+                            purchaseQuantity = record.purchaseQuantity, purchaseShipping = record.purchaseShipping,
+                            expectedPrice = record.expectedPrice, sellPrice = record.sellPrice,
+                            sellQuantity = record.sellQuantity, sellShipping = record.sellShipping,
+                            isFreeShipping = record.isFreeShipping, sellDate = record.sellDate,
+                            buyerInfo = record.buyerInfo, sellRemark = record.sellRemark,
+                            status = record.status, storageStatus = record.storageStatus,
+                            imagePaths = newImagePaths.joinToString(","),
+                            createdAt = record.createdAt, updatedAt = System.currentTimeMillis()
+                        )
+                        dao.updateCollectible(updated)
+                        importedCount++
+                    }
+                    else -> {
+                        // Insert new (also covers ADD-with-suffix and non-duplicate OVERWRITE)
+                        val suffix = if (isDuplicate && mode == ImportMode.ADD) "_${UUID.randomUUID().toString().substring(0, 4)}" else ""
+                        val entity = CollectibleEntity(
+                            name = "${record.name}$suffix",
+                            category = record.category, type = record.type,
+                            ipName = record.ipName, seriesName = record.seriesName, characterTag = record.characterTag,
+                            remark = record.remark, purchaseChannel = record.purchaseChannel, purchaseShop = record.purchaseShop,
+                            purchaseDate = record.purchaseDate, purchasePrice = record.purchasePrice,
+                            purchaseQuantity = record.purchaseQuantity, purchaseShipping = record.purchaseShipping,
+                            expectedPrice = record.expectedPrice, sellPrice = record.sellPrice,
+                            sellQuantity = record.sellQuantity, sellShipping = record.sellShipping,
+                            isFreeShipping = record.isFreeShipping, sellDate = record.sellDate,
+                            buyerInfo = record.buyerInfo, sellRemark = record.sellRemark,
+                            status = record.status, storageStatus = record.storageStatus,
+                            imagePaths = newImagePaths.joinToString(","),
+                            createdAt = record.createdAt, updatedAt = record.updatedAt
+                        )
+                        dao.insertCollectible(entity)
+                        importedCount++
+                    }
+                }
+                onProgress(index + 1, total)
             }
 
+            Log.d(TAG, "Import done: imported=$importedCount, skipped=$skippedCount, mode=$mode")
+            AppLogger.i("Import", "Done: imported=$importedCount, skipped=$skippedCount, mode=$mode, total=$total")
             tempDir.deleteRecursively()
             Result.success(importedCount)
         } catch (e: Exception) {
             Log.e(TAG, "Import failed", e)
+            AppLogger.e("Import", "Failed: ${e.message}", e)
             try { File(context.cacheDir, "backup_import").deleteRecursively() } catch (_: Exception) {}
             Result.failure(e)
         }
@@ -290,6 +400,12 @@ object BackupManager {
         val arr = obj.getJSONArray("collectibles")
         for (i in 0 until arr.length()) {
             val item = arr.getJSONObject(i)
+            val imgArr = item.optJSONArray("imageFilenames")
+            val imageFilenames = if (imgArr != null) {
+                (0 until imgArr.length()).map { imgArr.getString(it) }
+            } else {
+                emptyList()
+            }
             collectibles.add(CollectibleRecord(
                 id = item.optLong("id"), name = item.optString("name"),
                 category = item.optString("category"), type = item.optString("type"),
@@ -299,16 +415,15 @@ object BackupManager {
                 purchaseDate = item.optLong("purchaseDate"), purchasePrice = item.optDouble("purchasePrice"),
                 purchaseQuantity = item.optInt("purchaseQuantity"), purchaseShipping = item.optDouble("purchaseShipping"),
                 expectedPrice = item.optDouble("expectedPrice"),
-                sellPrice = if (item.has("sellPrice")) item.optDouble("sellPrice") else null,
-                sellQuantity = if (item.has("sellQuantity")) item.optInt("sellQuantity") else null,
-                sellShipping = if (item.has("sellShipping")) item.optDouble("sellShipping") else null,
+                sellPrice = item.optNullableDouble("sellPrice"),
+                sellQuantity = item.optNullableInt("sellQuantity"),
+                sellShipping = item.optNullableDouble("sellShipping"),
                 isFreeShipping = item.optBoolean("isFreeShipping"),
-                sellDate = if (item.has("sellDate")) item.optLong("sellDate") else null,
-                buyerInfo = if (item.has("buyerInfo")) item.optString("buyerInfo") else null,
-                sellRemark = if (item.has("sellRemark")) item.optString("sellRemark") else null,
+                sellDate = item.optNullableLong("sellDate"),
+                buyerInfo = item.optNullableString("buyerInfo"),
+                sellRemark = item.optNullableString("sellRemark"),
                 status = item.optString("status"), storageStatus = item.optString("storageStatus"),
-                imageFilenames = (0 until item.optJSONArray("imageFilenames").length())
-                    .map { item.optJSONArray("imageFilenames").getString(it) },
+                imageFilenames = imageFilenames,
                 createdAt = item.optLong("createdAt"), updatedAt = item.optLong("updatedAt")
             ))
         }

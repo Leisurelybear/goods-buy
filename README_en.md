@@ -8,6 +8,8 @@ An Android app for managing your anime merchandise collection — track purchase
 - **Profit/Loss Stats** — Auto-calculated P&L across total, monthly, and category dimensions; visual charts
 - **Dashboard** — At-a-glance overview of investment, revenue, holdings, and key metrics
 - **Gallery View** — Grid-style collection display with configurable columns and card size
+- **Backup & Restore** — One-tap ZIP backup (including images), import/restore with preview, and dedup/overwrite/add strategies
+- **Batch Operations** — Long-press to enter batch mode for status changes / deletion
 
 ## Screenshots
 

@@ -6,13 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.ui.backup.ImportMode
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import com.goodsbuy.app.util.BackupManager
+import com.goodsbuy.app.util.AppLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,15 +26,18 @@ class ProfileViewModel @Inject constructor(
     private val _importPreview = MutableStateFlow<ImportPreviewResult?>(null)
     val importPreview: StateFlow<ImportPreviewResult?> = _importPreview
 
-    private val _forceImportDuplicates = MutableStateFlow(false)
-    val forceImportDuplicates: StateFlow<Boolean> = _forceImportDuplicates
+    private val _importMode = MutableStateFlow(ImportMode.SKIP)
+    val importMode: StateFlow<ImportMode> = _importMode
+    fun setImportMode(mode: ImportMode) { _importMode.value = mode }
 
     private val _importedUri = MutableStateFlow<Uri?>(null)
     val importedUri: StateFlow<Uri?> = _importedUri
 
-    fun setForceImportDuplicates(force: Boolean) {
-        _forceImportDuplicates.value = force
-    }
+    private val _isImporting = MutableStateFlow(false)
+    val isImporting: StateFlow<Boolean> = _isImporting
+
+    private val _importProgress = MutableStateFlow(0f)
+    val importProgress: StateFlow<Float> = _importProgress
 
     fun setImportedUri(uri: Uri?) {
         _importedUri.value = uri
@@ -46,17 +50,23 @@ class ProfileViewModel @Inject constructor(
 
     fun previewImport(uri: Uri) {
         viewModelScope.launch {
-            _importPreview.value = BackupManager.previewImport(context, uri, dao, _forceImportDuplicates.value)
+            _importPreview.value = BackupManager.previewImport(context, uri, dao, _importMode.value)
         }
     }
 
-    fun confirmImport(onSuccess: (Int) -> Unit, onFailure: (String) -> Unit) {
-        val uri = _importedUri.value ?: run {
-            onFailure("No file selected")
-            return
-        }
+    fun confirmImport(onSuccess: suspend (Int) -> Unit, onFailure: suspend (String) -> Unit) {
         viewModelScope.launch {
-            val result = BackupManager.import(context, uri, dao, _forceImportDuplicates.value)
+            val uri = _importedUri.value ?: run {
+                onFailure("No file selected")
+                return@launch
+            }
+            _isImporting.value = true
+            _importProgress.value = 0f
+            val result = BackupManager.import(context, uri, dao, _importMode.value) { current, total ->
+                _importProgress.value = if (total > 0) current.toFloat() / total else 0f
+            }
+            _isImporting.value = false
+            _importProgress.value = 0f
             clearPreview()
             result.fold(
                 onSuccess = { count -> onSuccess(count) },
@@ -68,10 +78,17 @@ class ProfileViewModel @Inject constructor(
     fun exportBackup(outputUri: Uri, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                val collectibles = repository.getAllCollectibles().first()
+                val collectibles = repository.getAllCollectiblesOnce()
                 val success = BackupManager.export(context, collectibles, outputUri)
-                if (success) onSuccess() else onFailure("Export failed")
+                if (success) {
+                    AppLogger.i("Export", "Done: count=${collectibles.size}")
+                    onSuccess()
+                } else {
+                    AppLogger.e("Export", "Failed: BackupManager.export returned false")
+                    onFailure("Export failed")
+                }
             } catch (e: Exception) {
+                AppLogger.e("Export", "Failed: ${e.message}", e)
                 onFailure(e.message ?: "Export failed")
             }
         }
