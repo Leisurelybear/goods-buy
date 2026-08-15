@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,7 +39,7 @@ fun GalleryScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
 
-    var collapsedGroups by remember { mutableStateOf(setOf<String>()) }
+    var collapsedGroups by remember(uiState.groupBy) { mutableStateOf(setOf<String>()) }
 
     val toggleGroupCollapse: (String) -> Unit = { name ->
         collapsedGroups = if (name in collapsedGroups) collapsedGroups - name
@@ -169,7 +170,7 @@ private fun GalleryGroupHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick, role = Role.Button)
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

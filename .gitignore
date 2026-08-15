@@ -23,5 +23,8 @@ gradle-app.setting
 # Temp tools
 .tools/
 
+# Gradle build log
+build.log
+
 # Brainstorm companion session files
 .superpowers/

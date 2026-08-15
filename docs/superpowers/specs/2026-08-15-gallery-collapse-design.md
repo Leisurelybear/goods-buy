@@ -15,7 +15,7 @@
 - 折叠时组体不渲染；展开时渲染横向滑动行。
 - 组头显示折叠箭头图标：展开时 `Icons.AutoMirrored.Filled.KeyboardArrowUp`（或 `ExpandLess`），折叠时 `KeyboardArrowDown`（或 `ExpandMore`）。
 - 右侧「N 件」计数保留。
-- **折叠状态存储**：Composable 内 `remember { mutableStateOf(setOf<String>()) }` 保存已折叠的组名集合；`UNCATEGORIZED_NAME`（"未分类"）组同样参与折叠。
+- **折叠状态存储**：Composable 内 `remember(uiState.groupBy) { mutableStateOf(setOf<String>()) }` 保存已折叠的组名集合（以 `groupBy` 为 key，切换维度时自动重置）；`UNCATEGORIZED_NAME`（"未分类"）组同样参与折叠。
 - 切换 `GroupBy` 或页面重建后自动重置为全部展开（会话内记忆，不持久化）。
 
 ### 2. 组内横向滑动
