@@ -1,12 +1,14 @@
 package com.goodsbuy.app.ui.gallery
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,13 @@ fun GalleryScreen(
     var menuState by remember { mutableStateOf<LongPressMenuState?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
+
+    var collapsedGroups by remember { mutableStateOf(setOf<String>()) }
+
+    val toggleGroupCollapse: (String) -> Unit = { name ->
+        collapsedGroups = if (name in collapsedGroups) collapsedGroups - name
+        else collapsedGroups + name
+    }
 
     LaunchedEffect(preferencesRepository) {
         prefs = preferencesRepository.preferencesState.value
@@ -107,31 +116,42 @@ fun GalleryScreen(
             if (uiState.groups.isEmpty() && !uiState.isLoading) {
                 EmptyState(message = "还没有藏品")
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(prefs.columns),
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     uiState.groups.forEach { group ->
-                        item(key = "header_${group.name}", span = { GridItemSpan(maxLineSpan) }) {
-                            GalleryGroupHeader(group)
-                        }
-                        items(group.collectibles, key = { it.id }) { collectible ->
-                            CollectibleCard(
-                                collectible = collectible,
-                                onClick = { onNavigateToDetail(collectible.id) },
-                                cardSize = prefs.cardSize.dp,
-                                showName = prefs.showName,
-                                showPrice = prefs.showPrice,
-                                showStatus = prefs.showStatus,
-                                fontSize = prefs.fontSize,
-                                onLongPress = { menuState = LongPressMenuState(collectible) },
-                                isSelected = false,
-                                onSelect = null,
-                                batchMode = false
+                        item(key = "header_${group.name}") {
+                            GalleryGroupHeader(
+                                group = group,
+                                collapsed = group.name in collapsedGroups,
+                                onClick = { toggleGroupCollapse(group.name) }
                             )
+                        }
+                        if (group.name !in collapsedGroups) {
+                            item(key = "items_${group.name}") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(group.collectibles, key = { it.id }) { collectible ->
+                                        CollectibleCard(
+                                            collectible = collectible,
+                                            onClick = { onNavigateToDetail(collectible.id) },
+                                            cardSize = prefs.cardSize.dp,
+                                            showName = prefs.showName,
+                                            showPrice = prefs.showPrice,
+                                            showStatus = prefs.showStatus,
+                                            fontSize = prefs.fontSize,
+                                            onLongPress = { menuState = LongPressMenuState(collectible) },
+                                            isSelected = false,
+                                            onSelect = null,
+                                            batchMode = false
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -141,19 +161,31 @@ fun GalleryScreen(
 }
 
 @Composable
-private fun GalleryGroupHeader(group: GalleryGroup) {
+private fun GalleryGroupHeader(
+    group: GalleryGroup,
+    collapsed: Boolean,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(
+            imageVector = if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+            contentDescription = if (collapsed) "展开" else "折叠",
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = group.name,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "${group.count} 件",
             style = MaterialTheme.typography.bodySmall,
