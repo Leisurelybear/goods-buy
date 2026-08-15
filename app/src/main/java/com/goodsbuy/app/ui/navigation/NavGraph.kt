@@ -14,6 +14,7 @@ import com.goodsbuy.app.data.db.CollectibleDao
 import com.goodsbuy.app.ui.collectible.detail.CollectibleDetailScreen
 import com.goodsbuy.app.ui.collectible.form.CollectibleFormScreen
 import com.goodsbuy.app.ui.collectible.list.CollectibleListScreen
+import com.goodsbuy.app.ui.gallery.GalleryScreen
 import com.goodsbuy.app.ui.profile.ProfileScreen
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.statistics.StatisticsScreen
@@ -27,6 +28,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             CollectibleListScreen(
                 onNavigateToDetail = { navController.navigate(Screen.CollectibleDetail.createRoute(it)) },
                 onNavigateToForm = { id -> navController.navigate(Screen.CollectibleForm.createRoute(id)) },
+                onNavigateToGallery = { navController.navigate(Screen.Gallery.route) },
                 preferencesRepository = preferencesRepository
             )
         }
@@ -60,6 +62,16 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
             ProfileScreen(
                 preferencesRepository = preferencesRepository,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Gallery.route) {
+            val context = LocalContext.current
+            val preferencesRepository = remember { PreferencesRepository(context) }
+            GalleryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { navController.navigate(Screen.CollectibleDetail.createRoute(it)) },
+                onNavigateToForm = { id -> navController.navigate(Screen.CollectibleForm.createRoute(id)) },
+                preferencesRepository = preferencesRepository
             )
         }
     }

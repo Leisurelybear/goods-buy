@@ -33,6 +33,7 @@ import com.goodsbuy.app.ui.preferences.PreferencesRepository
 fun CollectibleListScreen(
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToForm: (Long?) -> Unit,
+    onNavigateToGallery: () -> Unit = {},
     preferencesRepository: PreferencesRepository,
     viewModel: CollectibleListViewModel = hiltViewModel()
 ) {
