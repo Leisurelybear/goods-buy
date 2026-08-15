@@ -139,6 +139,23 @@ fun CollectibleListScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!uiState.isBatchMode) {
+                if (prefs.galleryEntryHome) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = true,
+                            onClick = {},
+                            label = { Text("网格") }
+                        )
+                        FilterChip(
+                            selected = false,
+                            onClick = onNavigateToGallery,
+                            label = { Text("图鉴") }
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = searchText,
                     onValueChange = { newValue ->
