@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.domain.model.OrderStatus
+import com.goodsbuy.app.domain.calculator.CollectibleAccounting
 import com.goodsbuy.app.ui.components.StatusChip
 import com.goodsbuy.app.ui.components.ProfitLossText
 
@@ -106,7 +107,7 @@ fun CollectibleDetailScreen(
                         DetailRow("购入数量", "${collectible.purchaseQuantity}")
                         DetailRow("购入运费", "¥${collectible.purchaseShipping}")
                         DetailRow("心理预期价", "¥${collectible.expectedPrice}")
-                        DetailRow("总成本", "¥${collectible.purchasePrice * collectible.purchaseQuantity + collectible.purchaseShipping}")
+                        DetailRow("总成本", "¥${String.format("%.2f", CollectibleAccounting.purchaseTotal(collectible))}")
                     }
                 }
 
@@ -135,6 +136,7 @@ fun CollectibleDetailScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("盈亏情况", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            DetailRow("本次核算成本", "¥${String.format("%.2f", uiState.profitLoss!!.totalCost)}")
                             DetailRow("总营收", "¥${uiState.profitLoss!!.totalRevenue}")
                             DetailRow("盈亏金额", "", profitLoss = uiState.profitLoss)
                             DetailRow("盈亏比例", "${String.format("%.1f", uiState.profitLoss!!.profitRate)}%", profitLoss = uiState.profitLoss)

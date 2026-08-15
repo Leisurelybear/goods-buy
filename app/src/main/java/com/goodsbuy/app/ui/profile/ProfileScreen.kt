@@ -179,23 +179,9 @@ fun ProfileScreen(
 
                         HorizontalDivider()
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("图鉴入口位置", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.weight(1f))
-                            FilterChip(
-                                selected = !prefs.galleryEntryHome,
-                                onClick = { prefs = prefs.copy(galleryEntryHome = false); preferencesRepository.save(prefs) },
-                                label = { Text("我的") }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            FilterChip(
-                                selected = prefs.galleryEntryHome,
-                                onClick = { prefs = prefs.copy(galleryEntryHome = true); preferencesRepository.save(prefs) },
-                                label = { Text("首页") }
-                            )
+                        SettingToggleRow("首页显示图鉴切换", prefs.galleryEntryHome) {
+                            prefs = prefs.copy(galleryEntryHome = it)
+                            preferencesRepository.save(prefs)
                         }
 
                         SettingToggleRow("启用日志记录", prefs.loggingEnabled) {
@@ -278,27 +264,25 @@ fun ProfileScreen(
                         }
                         HorizontalDivider()
 
-                        if (!prefs.galleryEntryHome) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
-                                    Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
+                                Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            HorizontalDivider()
                         }
+                        HorizontalDivider()
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, contentDescription = null)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text("关于谷的拜", style = MaterialTheme.typography.bodyLarge)
-                                Text("v1.2.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("v1.3.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

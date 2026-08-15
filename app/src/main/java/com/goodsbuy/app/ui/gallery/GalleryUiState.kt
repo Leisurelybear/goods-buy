@@ -13,5 +13,6 @@ data class GalleryGroup(
 data class GalleryUiState(
     val groupBy: GroupBy = GroupBy.IP,
     val groups: List<GalleryGroup> = emptyList(),
+    val searchQuery: String = "",
     val isLoading: Boolean = true
 )

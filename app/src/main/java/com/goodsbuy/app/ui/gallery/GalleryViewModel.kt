@@ -29,20 +29,36 @@ class GalleryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _groupBy = MutableStateFlow(GroupBy.IP)
+    private val _searchQuery = MutableStateFlow("")
 
     val uiState: StateFlow<GalleryUiState> = combine(
         repository.getAllCollectibles(),
-        _groupBy
-    ) { list, groupBy ->
+        _groupBy,
+        _searchQuery
+    ) { list, groupBy, searchQuery ->
+        val query = searchQuery.trim()
+        val filtered = if (query.isBlank()) list else list.filter { collectible ->
+            listOf(
+                collectible.name,
+                collectible.ipName,
+                collectible.seriesName,
+                collectible.characterTag
+            ).any { it.contains(query, ignoreCase = true) }
+        }
         GalleryUiState(
             groupBy = groupBy,
-            groups = groupCollectibles(list, groupBy),
+            groups = groupCollectibles(filtered, groupBy),
+            searchQuery = searchQuery,
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GalleryUiState())
 
     fun setGroupBy(groupBy: GroupBy) {
         _groupBy.value = groupBy
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     fun quickUpdateStatus(collectible: Collectible, newStatus: OrderStatus) {

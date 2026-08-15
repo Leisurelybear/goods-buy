@@ -39,11 +39,7 @@ fun CollectibleListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val menuState by viewModel.longPressMenuState.collectAsState()
-    var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
-
-    LaunchedEffect(preferencesRepository) {
-        prefs = preferencesRepository.preferencesState.value
-    }
+    val prefs = preferencesRepository.preferencesState.value
 
     var searchText by remember { mutableStateOf(TextFieldValue(uiState.searchQuery)) }
     LaunchedEffect(uiState.searchQuery) {

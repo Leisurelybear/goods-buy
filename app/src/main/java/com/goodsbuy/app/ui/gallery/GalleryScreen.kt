@@ -1,14 +1,21 @@
 package com.goodsbuy.app.ui.gallery
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,20 +41,31 @@ fun GalleryScreen(
     viewModel: GalleryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
+    val prefs = preferencesRepository.preferencesState.value
     var menuState by remember { mutableStateOf<LongPressMenuState?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
+    var selectedGroupName by remember { mutableStateOf<String?>(null) }
 
     var collapsedGroups by remember(uiState.groupBy) { mutableStateOf(setOf<String>()) }
+
+    val selectedGroup = selectedGroupName?.let { name ->
+        uiState.groups.firstOrNull { it.name == name }
+    }
+
+    LaunchedEffect(uiState.groups, selectedGroupName) {
+        if (selectedGroupName != null && selectedGroup == null) {
+            selectedGroupName = null
+        }
+    }
+
+    BackHandler(enabled = selectedGroup != null) {
+        selectedGroupName = null
+    }
 
     val toggleGroupCollapse: (String) -> Unit = { name ->
         collapsedGroups = if (name in collapsedGroups) collapsedGroups - name
         else collapsedGroups + name
-    }
-
-    LaunchedEffect(preferencesRepository) {
-        prefs = preferencesRepository.preferencesState.value
     }
 
     if (menuState != null) {
@@ -87,19 +105,75 @@ fun GalleryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("图鉴模式") },
+                title = {
+                    if (selectedGroup != null) {
+                        Column {
+                            Text(selectedGroup.name)
+                            Text(
+                                "${selectedGroup.count} 件",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Text("图鉴模式")
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (selectedGroup != null) selectedGroupName = null else onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        if (selectedGroup != null) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(prefs.columns),
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                gridItems(selectedGroup.collectibles, key = { it.id }) { collectible ->
+                    CollectibleCard(
+                        collectible = collectible,
+                        onClick = { onNavigateToDetail(collectible.id) },
+                        cardSize = prefs.cardSize.dp,
+                        showName = prefs.showName,
+                        showPrice = prefs.showPrice,
+                        showStatus = prefs.showStatus,
+                        fontSize = prefs.fontSize,
+                        onLongPress = { menuState = LongPressMenuState(collectible) },
+                        isSelected = false,
+                        onSelect = null,
+                        batchMode = false
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = viewModel::setSearchQuery,
+                placeholder = { Text("搜索名称、IP、系列或角色") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "清除搜索")
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 FilterChip(
                     selected = uiState.groupBy == GroupBy.IP,
@@ -111,11 +185,21 @@ fun GalleryScreen(
                     onClick = { viewModel.setGroupBy(GroupBy.SERIES) },
                     label = { Text("按系列") }
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    collapsedGroups = if (uiState.groups.all { it.name in collapsedGroups }) {
+                        emptySet()
+                    } else {
+                        uiState.groups.map { it.name }.toSet()
+                    }
+                }, enabled = uiState.groups.isNotEmpty()) {
+                    Text(if (uiState.groups.isNotEmpty() && uiState.groups.all { it.name in collapsedGroups }) "全部展开" else "全部折叠")
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
 
             if (uiState.groups.isEmpty() && !uiState.isLoading) {
-                EmptyState(message = "还没有藏品")
+                EmptyState(message = if (uiState.searchQuery.isBlank()) "还没有藏品" else "没有匹配的藏品")
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -127,7 +211,8 @@ fun GalleryScreen(
                             GalleryGroupHeader(
                                 group = group,
                                 collapsed = group.name in collapsedGroups,
-                                onClick = { toggleGroupCollapse(group.name) }
+                                onToggleCollapse = { toggleGroupCollapse(group.name) },
+                                onOpen = { selectedGroupName = group.name }
                             )
                         }
                         if (group.name !in collapsedGroups) {
@@ -158,6 +243,7 @@ fun GalleryScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -165,32 +251,35 @@ fun GalleryScreen(
 private fun GalleryGroupHeader(
     group: GalleryGroup,
     collapsed: Boolean,
-    onClick: () -> Unit
+    onToggleCollapse: () -> Unit,
+    onOpen: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick, role = Role.Button)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-            contentDescription = if (collapsed) "展开" else "折叠",
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = group.name,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "${group.count} 件",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        IconButton(onClick = onToggleCollapse) {
+            Icon(
+                imageVector = if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = if (collapsed) "展开" else "折叠",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f).clickable(onClick = onOpen, role = Role.Button)
+                .padding(vertical = 8.dp),
+        ) {
+            Text(text = group.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                text = "${group.count} 件",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(onClick = onOpen) {
+            Icon(Icons.Default.ChevronRight, contentDescription = "查看本组")
+        }
     }
 }

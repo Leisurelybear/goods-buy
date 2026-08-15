@@ -2,19 +2,45 @@ package com.goodsbuy.app.domain.usecase
 
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.MonthlyStat
+import com.goodsbuy.app.domain.calculator.CollectibleAccounting
+import com.goodsbuy.app.domain.model.OrderStatus
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
 class GetMonthlyStatsUseCase @Inject constructor() {
     operator fun invoke(collectibles: List<Collectible>): List<MonthlyStat> {
-        val valid = collectibles.filter { it.purchaseDate > 0 }
-        val grouped = valid.groupBy {
-            val date = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
-            date.format(java.util.Date(it.purchaseDate))
+        val monthly = mutableMapOf<String, MonthlyTotals>()
+        collectibles.forEach { collectible ->
+            if (collectible.purchaseDate > 0) {
+                val month = monthOf(collectible.purchaseDate)
+                monthly.getOrPut(month) { MonthlyTotals() }.expense +=
+                    CollectibleAccounting.purchaseTotal(collectible)
+            }
+
+            // Income belongs to the sale month, not the purchase month. If a
+            // legacy record has no sale date, fall back to its purchase month
+            // so the revenue is not silently omitted from the chart.
+            if (collectible.status == OrderStatus.SOLD) {
+                val saleDate = collectible.sellDate ?: collectible.purchaseDate
+                if (saleDate > 0) {
+                    val month = monthOf(saleDate)
+                    monthly.getOrPut(month) { MonthlyTotals() }.income +=
+                        CollectibleAccounting.saleRevenue(collectible)
+                }
+            }
         }
-        return grouped.map { (month, items) ->
-            val expense = items.sumOf { it.purchasePrice * it.purchaseQuantity + it.purchaseShipping }
-            val income = items.filter { it.status.name == "SOLD" }.sumOf { (it.sellPrice ?: 0.0) * (it.sellQuantity ?: 0) }
-            MonthlyStat(yearMonth = month, expense = expense, income = income)
-        }.sortedBy { it.yearMonth }
+        return monthly.toSortedMap().map { (month, totals) ->
+            MonthlyStat(yearMonth = month, expense = totals.expense, income = totals.income)
+        }
     }
+
+    private fun monthOf(epochMillis: Long): String =
+        DateTimeFormatter.ofPattern("yyyy-MM", Locale.getDefault()).format(
+            Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
+        )
+
+    private data class MonthlyTotals(var expense: Double = 0.0, var income: Double = 0.0)
 }

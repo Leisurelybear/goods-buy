@@ -38,11 +38,19 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     StatRow("总投入", "¥${String.format("%.2f", uiState.summary.totalInvestment)}")
                     StatRow("总营收", "¥${String.format("%.2f", uiState.summary.totalRevenue)}")
                     StatRow("累计盈亏", "", profitAmount = uiState.summary.totalProfit)
-                    StatRow("盈亏比例", "${String.format("%.1f", uiState.summary.totalProfitRate)}%", profitAmount = uiState.summary.totalProfit)
+                    StatRow(
+                        "盈亏比例",
+                        "${String.format("%.1f", uiState.summary.totalProfitRate)}%",
+                        valueColor = if (uiState.summary.totalProfit >= 0) ProfitGreen else LossRed
+                    )
                     StatRow("持仓市值", "¥${String.format("%.2f", uiState.summary.holdingValue)}")
                     StatRow("藏品总数", "${uiState.summary.totalCount} (持有${uiState.summary.ownedCount}/已售${uiState.summary.soldCount})")
                 }
             }
+        }
+
+        item {
+            MonthlyTrendChart(stats = uiState.monthlyStats)
         }
 
         item {
@@ -109,7 +117,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun StatRow(label: String, value: String, profitAmount: Double? = null) {
+fun StatRow(label: String, value: String, profitAmount: Double? = null, valueColor: androidx.compose.ui.graphics.Color? = null) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (profitAmount != null) {
@@ -117,7 +125,7 @@ fun StatRow(label: String, value: String, profitAmount: Double? = null) {
             val sign = if (profitAmount >= 0) "+" else ""
             Text(text = "$sign¥${String.format("%.2f", profitAmount)}", color = color, style = MaterialTheme.typography.bodyMedium)
         } else {
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = valueColor ?: MaterialTheme.colorScheme.onSurface)
         }
     }
 }

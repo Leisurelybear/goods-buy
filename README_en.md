@@ -2,12 +2,14 @@
 
 An Android app for managing your anime merchandise collection — track purchases, sales, and real-time profit/loss in one place.
 
+Current version: **v1.3.0**
+
 ## Features (MVP)
 
 - **Collection Management** — Record, edit, and categorize your goods; manage order status (owned / sold / pending); attach photos
 - **Profit/Loss Stats** — Auto-calculated P&L across total, monthly, and category dimensions; visual charts
 - **Dashboard** — At-a-glance overview of investment, revenue, holdings, and key metrics
-- **Gallery View** — Grid-style collection display with configurable columns and card size
+- **Gallery View** — Grouped by IP/series with search, collapse/expand, focused group views, horizontal browsing, and an optional home-screen switch
 - **Backup & Restore** — One-tap ZIP backup (including images), import/restore with preview, and dedup/overwrite/add strategies
 - **Batch Operations** — Long-press to enter batch mode for status changes / deletion
 
@@ -48,7 +50,7 @@ An Android app for managing your anime merchandise collection — track purchase
 
 ## Requirements
 
-- minSdk: 29 (Android 10)
+- minSdk: 28 (Android 9)
 - JDK 17
 - Android SDK 34
 
@@ -73,6 +75,8 @@ Presentation (Compose Screens + ViewModels)
 ```
 
 ## License
+
+[Changelog](CHANGELOG.md)
 
 [中文说明](README.md)
 

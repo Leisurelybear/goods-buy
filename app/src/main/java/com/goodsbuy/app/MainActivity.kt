@@ -18,14 +18,19 @@ import com.goodsbuy.app.ui.navigation.NavGraph
 import com.goodsbuy.app.ui.navigation.Screen
 import com.goodsbuy.app.ui.theme.GoodsBuyTheme
 import dagger.hilt.android.AndroidEntryPoint
+import com.goodsbuy.app.ui.preferences.PreferencesRepository
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var preferencesRepository: PreferencesRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             GoodsBuyTheme {
-                MainScreen()
+                MainScreen(preferencesRepository)
             }
         }
     }
@@ -34,7 +39,7 @@ class MainActivity : ComponentActivity() {
 data class BottomNavItem(val label: String, val icon: @Composable () -> Unit, val route: String)
 
 @Composable
-fun MainScreen() {
+fun MainScreen(preferencesRepository: PreferencesRepository) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -69,6 +74,10 @@ fun MainScreen() {
             }
         }
     ) { innerPadding ->
-        NavGraph(navController = navController, modifier = Modifier.padding(innerPadding))
+        NavGraph(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+            preferencesRepository = preferencesRepository
+        )
     }
 }

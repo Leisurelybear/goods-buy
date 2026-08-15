@@ -4,9 +4,6 @@ import com.goodsbuy.app.domain.model.Collectible
 
 const val UNCATEGORIZED_NAME = "未分类"
 
-private val GROUP_ITEM_COMPARATOR =
-    compareBy<Collectible> { it.seriesName }.thenByDescending { it.createdAt }
-
 fun groupCollectibles(collectibles: List<Collectible>, groupBy: GroupBy): List<GalleryGroup> {
     val buckets = LinkedHashMap<String, MutableList<Collectible>>()
     collectibles.forEach { c ->
@@ -19,17 +16,29 @@ fun groupCollectibles(collectibles: List<Collectible>, groupBy: GroupBy): List<G
     }
     val uncategorized = buckets.remove(UNCATEGORIZED_NAME)
     val grouped = buckets.entries
-        .sortedByDescending { it.value.size }
+        .sortedWith(Comparator { left, right ->
+            val sizeOrder = right.value.size.compareTo(left.value.size)
+            if (sizeOrder != 0) sizeOrder else left.key.compareTo(right.key)
+        })
         .map { (name, items) ->
-            GalleryGroup(name, items.size, items.sortedWith(GROUP_ITEM_COMPARATOR))
+            GalleryGroup(name, items.size, items.sortedWith(itemComparator(groupBy)))
         }
     return if (uncategorized != null) {
         grouped + GalleryGroup(
             UNCATEGORIZED_NAME,
             uncategorized.size,
-            uncategorized.sortedWith(GROUP_ITEM_COMPARATOR)
+            uncategorized.sortedWith(itemComparator(groupBy))
         )
     } else {
         grouped
     }
+}
+
+private fun itemComparator(groupBy: GroupBy): Comparator<Collectible> = when (groupBy) {
+    GroupBy.IP -> compareBy<Collectible> { it.seriesName.trim() }
+        .thenByDescending { it.createdAt }
+        .thenBy { it.name.trim() }
+    GroupBy.SERIES -> compareBy<Collectible> { it.name.trim() }
+        .thenByDescending { it.createdAt }
+        .thenBy { it.characterTag.trim() }
 }

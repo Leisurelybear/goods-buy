@@ -127,6 +127,23 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `search filters by name ip series and character`() = runTest(testDispatcher) {
+        repository.allCollectibles.value = listOf(
+            collectible(1, name = "星野立牌", ipName = "蔚蓝档案"),
+            collectible(2, name = "皮卡丘挂件", ipName = "宝可梦", seriesName = "春日系列"),
+            collectible(3, name = "夏日徽章", ipName = "原神", seriesName = "海岛")
+        )
+
+        viewModel.setGroupBy(GroupBy.SERIES)
+        viewModel.setSearchQuery("春日")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.first()
+        assertEquals(listOf("春日系列"), state.groups.map { it.name })
+        assertEquals("春日", state.searchQuery)
+    }
+
+    @Test
     fun `quickUpdateStatus sets sellDate when sold`() = runTest(testDispatcher) {
         val item = collectible(1, status = OrderStatus.OWNED, sellDate = null)
 

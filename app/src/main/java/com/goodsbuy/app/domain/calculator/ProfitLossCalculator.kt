@@ -9,9 +9,8 @@ import javax.inject.Singleton
 class ProfitLossCalculator @Inject constructor() {
 
     fun calculate(collectible: Collectible): ProfitLoss {
-        val totalCost = collectible.purchasePrice * collectible.purchaseQuantity + collectible.purchaseShipping
-        val totalRevenue = (collectible.sellPrice ?: 0.0) * (collectible.sellQuantity ?: 0) +
-                if (collectible.isFreeShipping) 0.0 else (collectible.sellShipping ?: 0.0)
+        val totalCost = CollectibleAccounting.realizedCost(collectible)
+        val totalRevenue = CollectibleAccounting.saleRevenue(collectible)
         val profitAmount = totalRevenue - totalCost
         val profitRate = if (totalCost > 0) (profitAmount / totalCost) * 100 else 0.0
         return ProfitLoss(totalCost = totalCost, totalRevenue = totalRevenue, profitAmount = profitAmount, profitRate = profitRate)
