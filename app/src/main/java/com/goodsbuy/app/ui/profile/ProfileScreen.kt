@@ -179,8 +179,6 @@ fun ProfileScreen(
 
                         HorizontalDivider()
 
-                        HorizontalDivider()
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
