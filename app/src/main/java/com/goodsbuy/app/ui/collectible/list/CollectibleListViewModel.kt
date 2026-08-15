@@ -7,6 +7,7 @@ import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
+import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.util.AppLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -163,7 +164,7 @@ class CollectibleListViewModel @Inject constructor(
             }
             val dup = collectible.copy(
                 id = 0L,
-                name = "${collectible.name} $ts",
+                name = CollectibleNameUtils.buildDuplicateName(collectible.name, ts),
                 imagePaths = newImages,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
