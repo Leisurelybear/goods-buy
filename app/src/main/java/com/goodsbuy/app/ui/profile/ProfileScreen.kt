@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +31,7 @@ import com.goodsbuy.app.ui.preferences.PreferencesRepository
 fun ProfileScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: () -> Unit = {},
+    onNavigateToGallery: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     var showSettings by remember { mutableStateOf(false) }
@@ -177,6 +179,27 @@ fun ProfileScreen(
 
                         HorizontalDivider()
 
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("图鉴入口位置", style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.weight(1f))
+                            FilterChip(
+                                selected = !prefs.galleryEntryHome,
+                                onClick = { prefs = prefs.copy(galleryEntryHome = false); preferencesRepository.save(prefs) },
+                                label = { Text("我的") }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            FilterChip(
+                                selected = prefs.galleryEntryHome,
+                                onClick = { prefs = prefs.copy(galleryEntryHome = true); preferencesRepository.save(prefs) },
+                                label = { Text("首页") }
+                            )
+                        }
+
                         SettingToggleRow("启用日志记录", prefs.loggingEnabled) {
                             prefs = prefs.copy(loggingEnabled = it); preferencesRepository.save(prefs)
                             com.goodsbuy.app.util.AppLogger.setEnabled(it)
@@ -256,6 +279,21 @@ fun ProfileScreen(
                             }
                         }
                         HorizontalDivider()
+
+                        if (!prefs.galleryEntryHome) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
+                                    Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            HorizontalDivider()
+                        }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, contentDescription = null)
