@@ -15,7 +15,8 @@ data class GridPreferences(
     val sortAscending: Boolean = false,
     val fontSize: Int = 1,           // 0=小 1=中 2=大
     val showSortControl: Boolean = true,
-    val loggingEnabled: Boolean = false
+    val loggingEnabled: Boolean = false,
+    val galleryEntryHome: Boolean = false
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -29,7 +30,8 @@ class PreferencesRepository(private val context: Context) {
             prefs.getBoolean(PREF_SORT_ASCENDING, false),
             prefs.getInt(PREF_FONT_SIZE, 1),
             prefs.getBoolean(PREF_SHOW_SORT, true),
-            prefs.getBoolean(PREF_LOGGING, false)
+            prefs.getBoolean(PREF_LOGGING, false),
+            prefs.getBoolean(PREF_GALLERY_ENTRY_HOME, false)
         )
     )
 
@@ -43,6 +45,7 @@ class PreferencesRepository(private val context: Context) {
     val fontSize: Int get() = prefs.getInt(PREF_FONT_SIZE, 1)
     val showSortControl: Boolean get() = prefs.getBoolean(PREF_SHOW_SORT, true)
     val loggingEnabled: Boolean get() = prefs.getBoolean(PREF_LOGGING, false)
+    val galleryEntryHome: Boolean get() = prefs.getBoolean(PREF_GALLERY_ENTRY_HOME, false)
 
     val preferencesState: State<GridPreferences> get() = _state
 
@@ -59,6 +62,7 @@ class PreferencesRepository(private val context: Context) {
             putInt(PREF_FONT_SIZE, prefs.fontSize)
             putBoolean(PREF_SHOW_SORT, prefs.showSortControl)
             putBoolean(PREF_LOGGING, prefs.loggingEnabled)
+            putBoolean(PREF_GALLERY_ENTRY_HOME, prefs.galleryEntryHome)
             apply()
         }
     }
@@ -74,5 +78,6 @@ class PreferencesRepository(private val context: Context) {
         private const val PREF_FONT_SIZE = "font_size"
         private const val PREF_SHOW_SORT = "show_sort"
         private const val PREF_LOGGING = "logging_enabled"
+        private const val PREF_GALLERY_ENTRY_HOME = "gallery_entry_home"
     }
 }
