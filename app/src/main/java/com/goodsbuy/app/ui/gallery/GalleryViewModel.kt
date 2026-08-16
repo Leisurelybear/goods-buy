@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.di.DefaultDispatcher
 import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -25,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val repository: CollectibleRepository,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    @DefaultDispatcher private val groupingDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _groupBy = MutableStateFlow(GroupBy.IP)
@@ -51,7 +55,11 @@ class GalleryViewModel @Inject constructor(
             searchQuery = searchQuery,
             isLoading = false
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GalleryUiState())
+    }
+        // Grouping and sorting can touch every record when the dimension changes.
+        // Keep that work off the main thread so the gallery controls stay responsive.
+        .flowOn(groupingDispatcher)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GalleryUiState())
 
     fun setGroupBy(groupBy: GroupBy) {
         _groupBy.value = groupBy

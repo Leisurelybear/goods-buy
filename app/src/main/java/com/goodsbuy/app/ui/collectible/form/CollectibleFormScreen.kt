@@ -1,8 +1,6 @@
 package com.goodsbuy.app.ui.collectible.form
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -41,13 +39,8 @@ fun CollectibleFormScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 9)
-    ) { uris ->
-        val remainingSlots = (9 - uiState.imagePaths.size).coerceAtLeast(0)
-        uris.take(remainingSlots).forEach { uri ->
-            viewModel.addImagePath(uri.toString())
-        }
-    }
+        contract = GalleryImagePickerContract(maxItems = 9)
+    ) { uris -> viewModel.addImages(uris) }
 
     LaunchedEffect(collectibleId) {
         if (collectibleId != null) viewModel.loadCollectible(collectibleId)
@@ -107,17 +100,27 @@ fun CollectibleFormScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
              // 图片区域
-             Text("藏品图片", style = MaterialTheme.typography.titleMedium)
-             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                 Button(
-                     onClick = { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+             Row(
+                 modifier = Modifier.fillMaxWidth(),
+                 horizontalArrangement = Arrangement.SpaceBetween,
+                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+             ) {
+                 Column {
+                     Text("藏品图片", style = MaterialTheme.typography.titleMedium)
+                     Text(
+                         "已选择 ${uiState.imagePaths.size}/9 张",
+                         style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                 }
+                 FilledTonalButton(
+                     onClick = { imagePickerLauncher.launch(Unit) },
                      enabled = uiState.imagePaths.size < 9
                  ) {
                      Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
-                     Spacer(modifier = Modifier.width(4.dp))
-                     Text("添加图片")
+                     Spacer(modifier = Modifier.width(6.dp))
+                     Text("从相册添加")
                  }
-                 Text("${uiState.imagePaths.size}/9", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically))
              }
              AnimatedVisibility(
                  visible = uiState.imagePaths.isNotEmpty(),

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.goodsbuy.app.BuildConfig
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import kotlinx.coroutines.launch
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
@@ -179,9 +180,68 @@ fun ProfileScreen(
 
                         HorizontalDivider()
 
-                        SettingToggleRow("首页显示图鉴切换", prefs.galleryEntryHome) {
-                            prefs = prefs.copy(galleryEntryHome = it)
+                        SettingToggleRow("首页多图自动轮询", prefs.homeImageAutoRotate) {
+                            prefs = prefs.copy(homeImageAutoRotate = it)
                             preferencesRepository.save(prefs)
+                        }
+                        Text(
+                            "开启后，首页当前屏幕中的多图片藏品会自动切换封面",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("轮询间隔", style = MaterialTheme.typography.bodyLarge)
+                                Text("每张图片停留的时间", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        if (prefs.homeImageRotationIntervalSeconds > 1) {
+                                            prefs = prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds - 1)
+                                            preferencesRepository.save(prefs)
+                                        }
+                                    },
+                                    enabled = prefs.homeImageRotationIntervalSeconds > 1
+                                ) { Text("−", style = MaterialTheme.typography.headlineMedium) }
+                                Text("${prefs.homeImageRotationIntervalSeconds} 秒", style = MaterialTheme.typography.titleMedium)
+                                IconButton(
+                                    onClick = {
+                                        if (prefs.homeImageRotationIntervalSeconds < 60) {
+                                            prefs = prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds + 1)
+                                            preferencesRepository.save(prefs)
+                                        }
+                                    },
+                                    enabled = prefs.homeImageRotationIntervalSeconds < 60
+                                ) { Text("+", style = MaterialTheme.typography.headlineMedium) }
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        Text("图鉴入口", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "选择图鉴入口显示的位置",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            listOf("藏品柜", "我的").forEachIndexed { index, label ->
+                                val selected = if (index == 0) prefs.galleryEntryHome else !prefs.galleryEntryHome
+                                SegmentedButton(
+                                    selected = selected,
+                                    onClick = {
+                                        prefs = prefs.copy(galleryEntryHome = index == 0)
+                                        preferencesRepository.save(prefs)
+                                    },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                                    label = { Text(label) }
+                                )
+                            }
                         }
 
                         SettingToggleRow("启用日志记录", prefs.loggingEnabled) {
@@ -264,25 +324,27 @@ fun ProfileScreen(
                         }
                         HorizontalDivider()
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
-                                Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!prefs.galleryEntryHome) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
+                                    Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
+                            HorizontalDivider()
                         }
-                        HorizontalDivider()
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, contentDescription = null)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text("关于谷的拜", style = MaterialTheme.typography.bodyLarge)
-                                Text("v1.3.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

@@ -1,6 +1,7 @@
 package com.goodsbuy.app.ui.collectible.form
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
@@ -14,7 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -81,11 +84,20 @@ class CollectibleFormViewModel @Inject constructor(
     fun updateStorageStatus(storage: StorageStatus) { _uiState.update { it.copy(storageStatus = storage) } }
     fun updateFreeShipping(free: Boolean) { _uiState.update { it.copy(isFreeShipping = free) } }
 
-    fun addImagePath(uri: String) {
+    fun addImages(uris: List<Uri>) {
+        val remainingSlots = (MAX_IMAGE_COUNT - _uiState.value.imagePaths.size).coerceAtLeast(0)
+        if (remainingSlots == 0 || uris.isEmpty()) return
+
         viewModelScope.launch {
-            val newPath = ImageUtils.copyImageToInternalStorage(context, android.net.Uri.parse(uri))
-            if (newPath != null) {
-                _uiState.update { it.copy(imagePaths = it.imagePaths + newPath) }
+            val newPaths = withContext(Dispatchers.IO) {
+                uris.distinct().take(remainingSlots).mapNotNull { uri ->
+                    ImageUtils.copyImageToInternalStorage(context, uri)
+                }
+            }
+            if (newPaths.isNotEmpty()) {
+                _uiState.update { state ->
+                    state.copy(imagePaths = (state.imagePaths + newPaths).take(MAX_IMAGE_COUNT))
+                }
             }
         }
     }
@@ -132,5 +144,9 @@ class CollectibleFormViewModel @Inject constructor(
 
     fun clearSaveError() {
         _uiState.update { it.copy(saveError = null) }
+    }
+
+    private companion object {
+        const val MAX_IMAGE_COUNT = 9
     }
 }

@@ -85,7 +85,7 @@ class GalleryViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = GalleryViewModel(repository, mockk<Context>())
+        viewModel = GalleryViewModel(repository, mockk<Context>(), testDispatcher)
     }
 
     @After

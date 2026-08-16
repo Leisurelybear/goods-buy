@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -164,6 +165,11 @@ fun CollectibleListScreen(
                             }
                         },
                         actions = {
+                            if (prefs.galleryEntryHome) {
+                                IconButton(onClick = onNavigateToGallery) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = "打开图鉴")
+                                }
+                            }
                             IconButton(onClick = { onNavigateToForm(null) }) {
                                 Icon(Icons.Default.Add, contentDescription = "添加")
                             }
@@ -294,6 +300,8 @@ fun CollectibleListScreen(
                                 showPrice = prefs.showPrice,
                                 showStatus = prefs.showStatus,
                                 fontSize = prefs.fontSize,
+                                homeImageAutoRotate = prefs.homeImageAutoRotate,
+                                homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds,
                                 onLongPress = { if (!uiState.isBatchMode) viewModel.showLongPressMenu(collectible) },
                                 isSelected = uiState.selectedIds.contains(collectible.id),
                                 onSelect = { viewModel.toggleSelect(collectible.id) },

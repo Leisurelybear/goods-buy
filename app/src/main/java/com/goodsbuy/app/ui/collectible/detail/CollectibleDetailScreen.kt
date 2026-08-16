@@ -9,8 +9,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -20,9 +23,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.calculator.CollectibleAccounting
 import com.goodsbuy.app.ui.components.StatusChip
@@ -98,6 +104,13 @@ fun CollectibleDetailScreen(
                     .offset(y = contentOffsetY.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                 if (collectible.imagePaths.isNotEmpty()) {
+                     DetailImageGallery(
+                         name = collectible.name,
+                         imagePaths = collectible.imagePaths
+                     )
+                 }
+
                  // 快捷状态修改
                  Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                      Column(modifier = Modifier.padding(12.dp)) {
@@ -183,6 +196,57 @@ fun CollectibleDetailScreen(
                                 DetailRow("盈亏金额", "", profitLoss = uiState.profitLoss)
                                 DetailRow("盈亏比例", "${String.format("%.1f", uiState.profitLoss!!.profitRate)}%", profitLoss = uiState.profitLoss)
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailImageGallery(name: String, imagePaths: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Text("藏品图片", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "${imagePaths.size} 张",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 16.dp)
+        ) {
+            itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path ->
+                Box {
+                    AsyncImage(
+                        model = path,
+                        contentDescription = "$name 图片 ${index + 1}",
+                        modifier = Modifier
+                            .fillParentMaxWidth(0.88f)
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    if (imagePaths.size > 1) {
+                        Surface(
+                            modifier = Modifier
+                                .align(androidx.compose.ui.Alignment.BottomEnd)
+                                .padding(8.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "${index + 1}/${imagePaths.size}",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     }
                 }

@@ -1,7 +1,11 @@
 package com.goodsbuy.app.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -13,6 +17,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -38,6 +47,8 @@ fun CollectibleCard(
     showPrice: Boolean = true,
     showStatus: Boolean = true,
     fontSize: Int = 1,
+    homeImageAutoRotate: Boolean = false,
+    homeImageRotationIntervalSeconds: Int = 3,
     onLongPress: (() -> Unit)? = null,
     isSelected: Boolean = false,
     onSelect: (() -> Unit)? = null,
@@ -84,11 +95,10 @@ fun CollectibleCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (collectible.imagePaths.isNotEmpty()) {
-                AsyncImage(
-                    model = collectible.imagePaths[0],
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
+                CardImage(
+                    collectible = collectible,
+                    autoRotate = homeImageAutoRotate,
+                    rotationIntervalSeconds = homeImageRotationIntervalSeconds
                 )
             } else {
                 Box(
@@ -200,5 +210,47 @@ fun CollectibleCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CardImage(
+    collectible: Collectible,
+    autoRotate: Boolean,
+    rotationIntervalSeconds: Int
+) {
+    val imagePaths = collectible.imagePaths
+    if (!autoRotate || imagePaths.size <= 1) {
+        // Avoid an animation node and a coroutine for the common, static-card case.
+        AsyncImage(
+            model = imagePaths.first(),
+            contentDescription = collectible.name,
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
+        )
+        return
+    }
+
+    var imageIndex by remember(collectible.id, imagePaths) { mutableIntStateOf(0) }
+    LaunchedEffect(collectible.id, imagePaths, rotationIntervalSeconds) {
+        imageIndex = 0
+        val intervalMillis = rotationIntervalSeconds.coerceIn(1, 60) * 1_000L
+        while (true) {
+            delay(intervalMillis)
+            imageIndex = (imageIndex + 1) % imagePaths.size
+        }
+    }
+
+    AnimatedContent(
+        targetState = imagePaths[imageIndex],
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "card_image_rotation"
+    ) { path ->
+        AsyncImage(
+            model = path,
+            contentDescription = collectible.name,
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop
+        )
     }
 }

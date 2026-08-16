@@ -2,7 +2,7 @@
 
 An Android app for managing your anime merchandise collection — track purchases, sales, and real-time profit/loss in one place.
 
-Current version: **v1.3.0**
+Current version: **v1.3.1**
 
 ## Features (MVP)
 
