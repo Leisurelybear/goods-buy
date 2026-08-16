@@ -55,11 +55,23 @@ fun GalleryScreen(
     viewModel: GalleryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val pendingDeletion by viewModel.pendingDeletion.collectAsState()
     val prefs = preferencesRepository.preferencesState.value
+    val snackbarHostState = remember { SnackbarHostState() }
     var menuState by remember { mutableStateOf<LongPressMenuState?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
     var selectedGroupName by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(pendingDeletion?.token) {
+        val pending = pendingDeletion ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = "已删除 ${pending.collectibles.size} 件藏品",
+            actionLabel = "撤销",
+            duration = SnackbarDuration.Long
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
+    }
 
     var collapsedGroups by remember(uiState.groupBy) { mutableStateOf(setOf<String>()) }
 
@@ -102,7 +114,7 @@ fun GalleryScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false; pendingDelete = null },
             title = { Text("确认删除") },
-            text = { Text("确定要删除「${pendingDelete?.name}」吗？此操作不可撤销。") },
+            text = { Text("确定要删除「${pendingDelete?.name}」吗？删除后可在提示出现时撤销。") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingDelete?.let { viewModel.deleteCollectible(it) }
@@ -117,6 +129,7 @@ fun GalleryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

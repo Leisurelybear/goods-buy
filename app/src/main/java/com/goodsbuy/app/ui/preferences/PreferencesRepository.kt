@@ -20,7 +20,9 @@ data class GridPreferences(
     /** Whether multi-image cards on the home screen cycle through their images. */
     val homeImageAutoRotate: Boolean = false,
     /** Number of seconds each image remains visible before advancing. */
-    val homeImageRotationIntervalSeconds: Int = 3
+    val homeImageRotationIntervalSeconds: Int = 3,
+    /** Debounce interval used before persisting an edited collectible draft. */
+    val draftAutoSaveDelayMillis: Long = 500L
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -29,15 +31,20 @@ class PreferencesRepository(private val context: Context) {
 
     private val _state = mutableStateOf(
         GridPreferences(
-            columns, cardSize, showName, showPrice, showStatus,
-            prefs.getString(PREF_SORT_FIELD, "CREATED_AT") ?: "CREATED_AT",
-            prefs.getBoolean(PREF_SORT_ASCENDING, false),
-            prefs.getInt(PREF_FONT_SIZE, 1),
-            prefs.getBoolean(PREF_SHOW_SORT, true),
-            prefs.getBoolean(PREF_LOGGING, false),
-            prefs.getBoolean(PREF_GALLERY_ENTRY_HOME, false),
-            prefs.getBoolean(PREF_HOME_IMAGE_AUTO_ROTATE, false),
-            prefs.getInt(PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS, 3).coerceIn(1, 60)
+            columns = columns,
+            cardSize = cardSize,
+            showName = showName,
+            showPrice = showPrice,
+            showStatus = showStatus,
+            sortField = prefs.getString(PREF_SORT_FIELD, "CREATED_AT") ?: "CREATED_AT",
+            sortAscending = prefs.getBoolean(PREF_SORT_ASCENDING, false),
+            fontSize = prefs.getInt(PREF_FONT_SIZE, 1),
+            showSortControl = prefs.getBoolean(PREF_SHOW_SORT, true),
+            loggingEnabled = prefs.getBoolean(PREF_LOGGING, false),
+            galleryEntryHome = prefs.getBoolean(PREF_GALLERY_ENTRY_HOME, false),
+            homeImageAutoRotate = prefs.getBoolean(PREF_HOME_IMAGE_AUTO_ROTATE, false),
+            homeImageRotationIntervalSeconds = prefs.getInt(PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS, 3).coerceIn(1, 60),
+            draftAutoSaveDelayMillis = normalizeDraftAutoSaveDelay(prefs.getLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, 500L))
         )
     )
 
@@ -55,12 +62,15 @@ class PreferencesRepository(private val context: Context) {
     val homeImageAutoRotate: Boolean get() = prefs.getBoolean(PREF_HOME_IMAGE_AUTO_ROTATE, false)
     val homeImageRotationIntervalSeconds: Int
         get() = prefs.getInt(PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS, 3).coerceIn(1, 60)
+    val draftAutoSaveDelayMillis: Long
+        get() = normalizeDraftAutoSaveDelay(prefs.getLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, 500L))
 
     val preferencesState: State<GridPreferences> get() = _state
 
     fun save(prefs: GridPreferences) {
         val normalizedPrefs = prefs.copy(
-            homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds.coerceIn(1, 60)
+            homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds.coerceIn(1, 60),
+            draftAutoSaveDelayMillis = normalizeDraftAutoSaveDelay(prefs.draftAutoSaveDelayMillis)
         )
         this._state.value = normalizedPrefs
         with(PreferenceManager.getDefaultSharedPreferences(context).edit()) {
@@ -80,6 +90,7 @@ class PreferencesRepository(private val context: Context) {
                 PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS,
                 normalizedPrefs.homeImageRotationIntervalSeconds
             )
+            putLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, normalizedPrefs.draftAutoSaveDelayMillis)
             apply()
         }
     }
@@ -98,5 +109,10 @@ class PreferencesRepository(private val context: Context) {
         private const val PREF_GALLERY_ENTRY_HOME = "gallery_entry_home"
         private const val PREF_HOME_IMAGE_AUTO_ROTATE = "home_image_auto_rotate"
         private const val PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS = "home_image_rotation_interval_seconds"
+        private const val PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS = "draft_auto_save_delay_millis"
+        val DRAFT_AUTO_SAVE_DELAY_OPTIONS = listOf(500L, 1_000L, 2_000L)
+
+        private fun normalizeDraftAutoSaveDelay(value: Long): Long =
+            value.takeIf { it in DRAFT_AUTO_SAVE_DELAY_OPTIONS } ?: 500L
     }
 }

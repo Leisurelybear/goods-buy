@@ -33,5 +33,8 @@ data class CollectibleFormUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
-    val saveError: String? = null
+    val saveError: String? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val hasDraft: Boolean = false,
+    val draftSavedAt: Long = 0L
 )

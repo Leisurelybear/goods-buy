@@ -8,6 +8,7 @@ import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.util.AppLogger
+import com.goodsbuy.app.util.UndoDeleteManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class CollectibleDetailViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     private val calculator: ProfitLossCalculator,
+    private val undoDeleteManager: UndoDeleteManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -64,8 +66,7 @@ class CollectibleDetailViewModel @Inject constructor(
     fun deleteCollectible(onDeleted: (() -> Unit)? = null) {
         val collectible = _uiState.value.collectible ?: return
         viewModelScope.launch {
-            collectible.imagePaths.forEach { ImageUtils.deleteImage(context, it) }
-            repository.deleteCollectible(collectible.id)
+            undoDeleteManager.delete(listOf(collectible))
             _uiState.update { it.copy(showDeleteDialog = false, collectible = null) }
             AppLogger.i("Delete", "Detail delete: id=${collectible.id}, name=${collectible.name}")
             onDeleted?.invoke()

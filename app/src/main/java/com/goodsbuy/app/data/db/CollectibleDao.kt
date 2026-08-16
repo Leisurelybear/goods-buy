@@ -21,14 +21,23 @@ interface CollectibleDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertCollectible(collectible: CollectibleEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertCollectibles(collectibles: List<CollectibleEntity>)
+
     @Update
     suspend fun updateCollectible(collectible: CollectibleEntity)
+
+    @Update
+    suspend fun updateCollectibles(collectibles: List<CollectibleEntity>)
 
     @Delete
     suspend fun deleteCollectible(collectible: CollectibleEntity)
 
     @Query("DELETE FROM collectibles WHERE id = :id")
     suspend fun deleteCollectibleById(id: Long)
+
+    @Query("DELETE FROM collectibles WHERE id IN (:ids)")
+    suspend fun deleteCollectiblesByIds(ids: List<Long>)
 
     @Query("SELECT * FROM collectibles WHERE status = 'SOLD' ORDER BY sellDate DESC")
     fun getSoldCollectibles(): Flow<List<CollectibleEntity>>

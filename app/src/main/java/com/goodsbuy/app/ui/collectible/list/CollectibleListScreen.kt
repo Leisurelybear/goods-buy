@@ -50,8 +50,10 @@ fun CollectibleListScreen(
     viewModel: CollectibleListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val pendingDeletion by viewModel.pendingDeletion.collectAsState()
     val menuState by viewModel.longPressMenuState.collectAsState()
     val prefs = preferencesRepository.preferencesState.value
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var searchText by remember { mutableStateOf(TextFieldValue(uiState.searchQuery)) }
     LaunchedEffect(uiState.searchQuery) {
@@ -63,6 +65,16 @@ fun CollectibleListScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(pendingDeletion?.token) {
+        val pending = pendingDeletion ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = "已删除 ${pending.collectibles.size} 件藏品",
+            actionLabel = "撤销",
+            duration = SnackbarDuration.Long
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
+    }
 
     if (menuState != null) {
         LongPressMenu(
@@ -85,9 +97,9 @@ fun CollectibleListScreen(
             title = { Text("确认删除") },
             text = {
                 if (uiState.isBatchMode) {
-                    Text("确定要删除选中的 ${uiState.selectedIds.size} 件藏品吗？此操作不可撤销。")
+                    Text("确定要删除选中的 ${uiState.selectedIds.size} 件藏品吗？删除后可在提示出现时撤销。")
                 } else {
-                    Text("确定要删除「${pendingDelete?.name}」吗？此操作不可撤销。")
+                    Text("确定要删除「${pendingDelete?.name}」吗？删除后可在提示出现时撤销。")
                 }
             },
             confirmButton = {
@@ -111,6 +123,7 @@ fun CollectibleListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AnimatedContent(
                 targetState = uiState.isBatchMode,

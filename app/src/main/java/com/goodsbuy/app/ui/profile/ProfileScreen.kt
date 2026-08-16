@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
@@ -33,9 +35,11 @@ fun ProfileScreen(
     preferencesRepository: PreferencesRepository,
     onNavigateBack: () -> Unit = {},
     onNavigateToGallery: () -> Unit = {},
+    onNavigateToForm: (Long?) -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     var showSettings by remember { mutableStateOf(false) }
+    var showDrafts by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -70,6 +74,7 @@ fun ProfileScreen(
     val currentImportMode by viewModel.importMode.collectAsState()
     val isImporting by viewModel.isImporting.collectAsState()
     val importProgress by viewModel.importProgress.collectAsState()
+    val drafts by viewModel.drafts.collectAsState()
 
     // Import preview is a full-screen surface with its own TopAppBar — render it
     // directly to avoid a double title bar (ProfileScreen's + ImportPreviewScreen's).
@@ -97,10 +102,10 @@ fun ProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (showSettings) "显示设置" else "我的") },
+                title = { Text(if (showSettings) "显示设置" else if (showDrafts) "草稿箱" else "我的") },
                 navigationIcon = {
-                    if (showSettings) {
-                        IconButton(onClick = { showSettings = false }) {
+                    if (showSettings || showDrafts) {
+                        IconButton(onClick = { showSettings = false; showDrafts = false }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                         }
                     }
@@ -177,6 +182,33 @@ fun ProfileScreen(
                         SettingToggleRow("显示价格", prefs.showPrice) { prefs = prefs.copy(showPrice = it); preferencesRepository.save(prefs) }
                         SettingToggleRow("显示状态", prefs.showStatus) { prefs = prefs.copy(showStatus = it); preferencesRepository.save(prefs) }
                         SettingToggleRow("显示排序栏", prefs.showSortControl) { prefs = prefs.copy(showSortControl = it); preferencesRepository.save(prefs) }
+
+                        HorizontalDivider()
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("草稿自动保存间隔", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "停止编辑后保存，推荐 0.5 秒",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val delayOptions = PreferencesRepository.DRAFT_AUTO_SAVE_DELAY_OPTIONS.map { delayMillis ->
+                                delayMillis to if (delayMillis == 500L) "0.5 秒" else "${delayMillis / 1_000} 秒"
+                            }
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                delayOptions.forEachIndexed { index, (delayMillis, label) ->
+                                    SegmentedButton(
+                                        selected = prefs.draftAutoSaveDelayMillis == delayMillis,
+                                        onClick = {
+                                            prefs = prefs.copy(draftAutoSaveDelayMillis = delayMillis)
+                                            preferencesRepository.save(prefs)
+                                        },
+                                        shape = SegmentedButtonDefaults.itemShape(index, delayOptions.size),
+                                        label = { Text(label) }
+                                    )
+                                }
+                            }
+                        }
 
                         HorizontalDivider()
 
@@ -277,6 +309,29 @@ fun ProfileScreen(
                         }
                     }
                 }
+            } else if (showDrafts) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (drafts.isEmpty()) {
+                            Text("暂无草稿", style = MaterialTheme.typography.bodyLarge)
+                            Text("在添加或编辑藏品时离开页面，内容会自动保存在这里。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            drafts.forEach { draft ->
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+                                        Text(if (draft.id == null) "新藏品草稿" else "编辑藏品草稿", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    TextButton(onClick = { onNavigateToForm(draft.id) }) { Text("继续编辑") }
+                                    IconButton(onClick = { viewModel.deleteDraft(draft.key) }) {
+                                        Icon(Icons.Default.Close, contentDescription = "删除草稿")
+                                    }
+                                }
+                                if (draft != drafts.last()) HorizontalDivider()
+                            }
+                        }
+                    }
+                }
             } else {
                 // Main profile screen
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -290,6 +345,19 @@ fun ProfileScreen(
                             Text("设置", style = MaterialTheme.typography.bodyLarge)
                             Spacer(modifier = Modifier.weight(1f))
                             Icon(Icons.Default.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.graphicsLayer(rotationZ = 180f))
+                        }
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { showDrafts = true; viewModel.refreshDrafts() },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("草稿箱", style = MaterialTheme.typography.bodyLarge)
+                                Text("${drafts.size} 条未完成草稿", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                         HorizontalDivider()
 

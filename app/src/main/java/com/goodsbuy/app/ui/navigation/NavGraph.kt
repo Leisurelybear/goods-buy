@@ -95,7 +95,8 @@ fun NavGraph(
             ProfileScreen(
                 preferencesRepository = preferencesRepository,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToGallery = { navController.navigate(Screen.Gallery.route) }
+                onNavigateToGallery = { navController.navigate(Screen.Gallery.route) },
+                onNavigateToForm = { id -> navController.navigate(Screen.CollectibleForm.createRoute(id)) }
             )
         }
         composable(

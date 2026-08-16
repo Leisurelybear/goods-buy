@@ -64,7 +64,7 @@ fun CollectibleDetailScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.dismissDeleteDialog() },
                 title = { Text("确认删除") },
-                text = { Text("确定要删除「${collectible?.name}」吗？此操作不可撤销，其图片也会被删除。") },
+                text = { Text("确定要删除「${collectible?.name}」吗？删除后可在返回列表时撤销。") },
                 confirmButton = {
                     TextButton(onClick = { viewModel.deleteCollectible(onDeleted = onNavigateBack) }) {
                         Text("删除", color = MaterialTheme.colorScheme.error)

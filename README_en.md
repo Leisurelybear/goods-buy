@@ -2,7 +2,7 @@
 
 An Android app for managing your anime merchandise collection — track purchases, sales, and real-time profit/loss in one place.
 
-Current version: **v1.3.1**
+Current version: **v1.4.0**
 
 ## Features (MVP)
 
@@ -12,6 +12,8 @@ Current version: **v1.3.1**
 - **Gallery View** — Grouped by IP/series with search, collapse/expand, focused group views, horizontal browsing, and an optional home-screen switch
 - **Backup & Restore** — One-tap ZIP backup (including images), import/restore with preview, and dedup/overwrite/add strategies
 - **Batch Operations** — Long-press to enter batch mode for status changes / deletion
+- **Drafts & Auto-save** — Automatically save unfinished forms (including images), restore them from the draft box, and choose a 0.5/1/2 second interval
+- **Safety & Recovery** — Inline form validation, undo after deletion, stricter backup validation, and transactional imports
 
 ## Screenshots
 

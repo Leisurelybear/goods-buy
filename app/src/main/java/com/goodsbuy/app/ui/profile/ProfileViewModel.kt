@@ -5,24 +5,47 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.data.db.CollectibleDao
+import com.goodsbuy.app.data.db.AppDatabase
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.ui.backup.ImportMode
 import com.goodsbuy.app.ui.backup.ImportPreviewResult
 import com.goodsbuy.app.util.BackupManager
 import com.goodsbuy.app.util.AppLogger
+import com.goodsbuy.app.util.ImageUtils
+import com.goodsbuy.app.ui.collectible.form.CollectibleDraftStore
+import com.goodsbuy.app.ui.collectible.form.DraftSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: CollectibleRepository,
-    private val dao: CollectibleDao
+    private val dao: CollectibleDao,
+    private val database: AppDatabase,
+    private val draftStore: CollectibleDraftStore
 ) : ViewModel() {
+    private val _drafts = MutableStateFlow<List<DraftSummary>>(emptyList())
+    val drafts: StateFlow<List<DraftSummary>> = _drafts
+
+    init { refreshDrafts() }
+
+    fun refreshDrafts() { _drafts.value = draftStore.list() }
+    fun deleteDraft(key: String) {
+        viewModelScope.launch {
+            val draft = draftStore.load(key)
+            val persistedPaths = draft?.id?.let { repository.getCollectibleById(it)?.imagePaths }.orEmpty().toSet()
+            draft?.imagePaths?.filterNot(persistedPaths::contains)?.forEach { ImageUtils.deleteImage(context, it) }
+            draftStore.delete(key)
+            refreshDrafts()
+        }
+    }
     private val _importPreview = MutableStateFlow<ImportPreviewResult?>(null)
     val importPreview: StateFlow<ImportPreviewResult?> = _importPreview
 
@@ -50,7 +73,9 @@ class ProfileViewModel @Inject constructor(
 
     fun previewImport(uri: Uri) {
         viewModelScope.launch {
-            _importPreview.value = BackupManager.previewImport(context, uri, dao, _importMode.value)
+            _importPreview.value = withContext(Dispatchers.IO) {
+                BackupManager.previewImport(context, uri, dao, _importMode.value)
+            }
         }
     }
 
@@ -62,8 +87,10 @@ class ProfileViewModel @Inject constructor(
             }
             _isImporting.value = true
             _importProgress.value = 0f
-            val result = BackupManager.import(context, uri, dao, _importMode.value) { current, total ->
-                _importProgress.value = if (total > 0) current.toFloat() / total else 0f
+            val result = withContext(Dispatchers.IO) {
+                BackupManager.import(context, uri, database, _importMode.value) { current, total ->
+                    _importProgress.value = if (total > 0) current.toFloat() / total else 0f
+                }
             }
             _isImporting.value = false
             _importProgress.value = 0f
@@ -79,7 +106,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val collectibles = repository.getAllCollectiblesOnce()
-                val success = BackupManager.export(context, collectibles, outputUri)
+                val success = withContext(Dispatchers.IO) { BackupManager.export(context, collectibles, outputUri) }
                 if (success) {
                     AppLogger.i("Export", "Done: count=${collectibles.size}")
                     onSuccess()

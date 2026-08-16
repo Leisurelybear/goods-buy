@@ -10,6 +10,8 @@ import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.util.AppLogger
+import com.goodsbuy.app.util.PendingDeletion
+import com.goodsbuy.app.util.UndoDeleteManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,8 +30,11 @@ import javax.inject.Inject
 class CollectibleListViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val undoDeleteManager: UndoDeleteManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    val pendingDeletion: StateFlow<PendingDeletion?> = undoDeleteManager.pending
 
     private val _searchQuery = MutableStateFlow("")
     private val _statusFilter = MutableStateFlow<String?>(null)
@@ -119,24 +124,21 @@ class CollectibleListViewModel @Inject constructor(
     fun batchDelete() {
         val ids = _selectedIds.value
         viewModelScope.launch {
-            ids.forEach { id ->
-                repository.getCollectibleById(id)?.let { c ->
-                    c.imagePaths.forEach { ImageUtils.deleteImage(context, it) }
-                }
-                repository.deleteCollectible(id)
-            }
+            val collectibles = ids.mapNotNull { repository.getCollectibleById(it) }
+            undoDeleteManager.delete(collectibles)
             AppLogger.i("Delete", "Batch delete: count=${ids.size}, ids=$ids")
         }
     }
 
     fun batchDeleteSingle(id: Long) {
         viewModelScope.launch {
-            repository.getCollectibleById(id)?.let { c ->
-                c.imagePaths.forEach { ImageUtils.deleteImage(context, it) }
-            }
-            repository.deleteCollectible(id)
+            repository.getCollectibleById(id)?.let { undoDeleteManager.delete(listOf(it)) }
             AppLogger.i("Delete", "Single delete: id=$id")
         }
+    }
+
+    fun undoDelete() {
+        viewModelScope.launch { undoDeleteManager.undo() }
     }
 
     fun duplicateCollectible(collectible: Collectible) {

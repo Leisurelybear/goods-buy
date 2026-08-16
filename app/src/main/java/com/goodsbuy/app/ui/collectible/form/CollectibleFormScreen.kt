@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,12 +22,14 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,14 +40,26 @@ fun CollectibleFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDraftSaved by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.draftSavedAt) {
+        if (uiState.draftSavedAt > 0L) {
+            showDraftSaved = true
+            delay(1_500)
+            showDraftSaved = false
+        }
+    }
+    val draftSavedAlpha by animateFloatAsState(
+        targetValue = if (showDraftSaved) 1f else 0f,
+        animationSpec = tween(180),
+        label = "draft_saved_alpha"
+    )
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = GalleryImagePickerContract(maxItems = 9)
     ) { uris -> viewModel.addImages(uris) }
 
-    LaunchedEffect(collectibleId) {
-        if (collectibleId != null) viewModel.loadCollectible(collectibleId)
-    }
+    LaunchedEffect(collectibleId) { viewModel.initialize(collectibleId) }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -78,9 +93,18 @@ fun CollectibleFormScreen(
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
+                    Row(
+                        modifier = Modifier.width(64.dp).alpha(draftSavedAlpha),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("已保存", style = MaterialTheme.typography.labelSmall)
+                    }
                     IconButton(
                         onClick = viewModel::save,
-                        enabled = uiState.name.isNotBlank() && !uiState.isSaving && !uiState.isSaved
+                        enabled = !uiState.isSaving && !uiState.isSaved
                     ) {
                         if (uiState.isSaving) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -99,6 +123,19 @@ fun CollectibleFormScreen(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (uiState.hasDraft) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("发现未完成草稿", style = MaterialTheme.typography.titleSmall)
+                        Text("可以恢复上次编辑的内容，或直接丢弃。", style = MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = viewModel::restoreDraft) { Text("恢复草稿") }
+                            OutlinedButton(onClick = viewModel::discardDraft) { Text("丢弃") }
+                        }
+                    }
+                }
+            }
+
              // 图片区域
              Row(
                  modifier = Modifier.fillMaxWidth(),
@@ -154,7 +191,9 @@ fun CollectibleFormScreen(
                  label = { Text("制品名称") },
                  placeholder = { Text("例如：宝可梦卡牌 路卡利欧 SR") },
                  modifier = Modifier.fillMaxWidth(),
-                 singleLine = true
+                 singleLine = true,
+                 isError = uiState.fieldErrors.containsKey("name"),
+                 supportingText = { uiState.fieldErrors["name"]?.let { Text(it) } }
              )
              OutlinedTextField(
                  value = uiState.category,
@@ -202,6 +241,8 @@ fun CollectibleFormScreen(
                  label = "购买单价",
                  placeholder = "例如：5000",
                  isDecimal = true,
+                 isError = uiState.fieldErrors.containsKey("purchasePrice"),
+                 errorText = uiState.fieldErrors["purchasePrice"],
                  modifier = Modifier.fillMaxWidth()
              )
              NumTextField(
@@ -209,7 +250,9 @@ fun CollectibleFormScreen(
                  onValueChange = { viewModel.updateField("purchaseQuantity", it) },
                  label = "购入数量",
                  placeholder = "例如：1",
-                 modifier = Modifier.fillMaxWidth()
+                 modifier = Modifier.fillMaxWidth(),
+                 isError = uiState.fieldErrors.containsKey("purchaseQuantity"),
+                 errorText = uiState.fieldErrors["purchaseQuantity"]
              )
              NumTextField(
                  value = uiState.purchaseShipping,
@@ -217,7 +260,9 @@ fun CollectibleFormScreen(
                  label = "购入运费",
                  placeholder = "例如：500",
                  isDecimal = true,
-                 modifier = Modifier.fillMaxWidth()
+                 modifier = Modifier.fillMaxWidth(),
+                 isError = uiState.fieldErrors.containsKey("purchaseShipping"),
+                 errorText = uiState.fieldErrors["purchaseShipping"]
              )
              NumTextField(
                  value = uiState.expectedPrice,
@@ -225,7 +270,9 @@ fun CollectibleFormScreen(
                  label = "心理预期价",
                  placeholder = "例如：7000",
                  isDecimal = true,
-                 modifier = Modifier.fillMaxWidth()
+                 modifier = Modifier.fillMaxWidth(),
+                 isError = uiState.fieldErrors.containsKey("expectedPrice"),
+                 errorText = uiState.fieldErrors["expectedPrice"]
              )
              OutlinedTextField(
                  value = uiState.purchaseChannel,
@@ -256,14 +303,18 @@ fun CollectibleFormScreen(
                          label = "售出单价",
                          placeholder = "例如：7000",
                          isDecimal = true,
-                         modifier = Modifier.fillMaxWidth()
+                         modifier = Modifier.fillMaxWidth(),
+                         isError = uiState.fieldErrors.containsKey("sellPrice"),
+                         errorText = uiState.fieldErrors["sellPrice"]
                      )
                      NumTextField(
                          value = uiState.sellQuantity,
                          onValueChange = { viewModel.updateField("sellQuantity", it) },
                          label = "售出数量",
                          placeholder = "例如：1",
-                         modifier = Modifier.fillMaxWidth()
+                         modifier = Modifier.fillMaxWidth(),
+                         isError = uiState.fieldErrors.containsKey("sellQuantity"),
+                         errorText = uiState.fieldErrors["sellQuantity"]
                      )
                      NumTextField(
                          value = uiState.sellShipping,
@@ -271,7 +322,9 @@ fun CollectibleFormScreen(
                          label = "售出运费",
                          placeholder = "例如：500（买家承担）",
                          isDecimal = true,
-                         modifier = Modifier.fillMaxWidth()
+                         modifier = Modifier.fillMaxWidth(),
+                         isError = uiState.fieldErrors.containsKey("sellShipping"),
+                         errorText = uiState.fieldErrors["sellShipping"]
                      )
                      Row(
                          modifier = Modifier.fillMaxWidth(),
@@ -329,7 +382,9 @@ fun NumTextField(
     label: String,
     modifier: Modifier = Modifier,
     placeholder: String = "",
-    isDecimal: Boolean = false
+    isDecimal: Boolean = false,
+    isError: Boolean = false,
+    errorText: String? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -349,6 +404,8 @@ fun NumTextField(
         label = { Text(label) },
         placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         modifier = modifier,
-        singleLine = true
+        singleLine = true,
+        isError = isError,
+        supportingText = { if (errorText != null) Text(errorText) }
     )
 }

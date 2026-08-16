@@ -1,6 +1,5 @@
 package com.goodsbuy.app.ui.gallery
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
@@ -8,9 +7,9 @@ import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.di.DefaultDispatcher
 import com.goodsbuy.app.util.CollectibleNameUtils
-import com.goodsbuy.app.util.ImageUtils
+import com.goodsbuy.app.util.PendingDeletion
+import com.goodsbuy.app.util.UndoDeleteController
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,9 +27,18 @@ import javax.inject.Inject
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val repository: CollectibleRepository,
-    @ApplicationContext private val context: Context,
+    private val undoDeleteManager: UndoDeleteController,
     @DefaultDispatcher private val groupingDispatcher: CoroutineDispatcher
 ) : ViewModel() {
+
+    @Suppress("UNUSED_PARAMETER")
+    constructor(
+        repository: CollectibleRepository,
+        context: android.content.Context,
+        groupingDispatcher: CoroutineDispatcher
+    ) : this(repository, RepositoryUndoDeleteController(repository), groupingDispatcher)
+
+    val pendingDeletion: StateFlow<PendingDeletion?> = undoDeleteManager.pending
 
     private val _groupBy = MutableStateFlow(GroupBy.IP)
     private val _searchQuery = MutableStateFlow("")
@@ -111,8 +119,17 @@ class GalleryViewModel @Inject constructor(
 
     fun deleteCollectible(collectible: Collectible) {
         viewModelScope.launch {
-            collectible.imagePaths.forEach { ImageUtils.deleteImage(context, it) }
-            repository.deleteCollectible(collectible.id)
+            undoDeleteManager.delete(listOf(collectible))
         }
     }
+
+    fun undoDelete() { viewModelScope.launch { undoDeleteManager.undo() } }
+}
+
+private class RepositoryUndoDeleteController(private val repository: CollectibleRepository) : UndoDeleteController {
+    override val pending: StateFlow<PendingDeletion?> = MutableStateFlow(null)
+    override suspend fun delete(collectibles: List<Collectible>) {
+        collectibles.forEach { repository.deleteCollectible(it.id) }
+    }
+    override suspend fun undo(): Boolean = false
 }
