@@ -1,5 +1,13 @@
 package com.goodsbuy.app.ui.collectible.detail
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,7 +73,31 @@ fun CollectibleDetailScreen(
         if (collectible == null) {
             Box(modifier = Modifier.fillMaxSize().padding(padding))
         } else {
-             Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Entrance animation
+            var visible by remember { mutableStateOf(false) }
+            LaunchedEffect(collectible.id) { visible = true }
+
+            val contentAlpha by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = tween(300),
+                label = "detail_alpha"
+            )
+            val contentOffsetY by animateFloatAsState(
+                targetValue = if (visible) 0f else 16f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+                label = "detail_offset"
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+                    .alpha(contentAlpha)
+                    .offset(y = contentOffsetY.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                  // 快捷状态修改
                  Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                      Column(modifier = Modifier.padding(12.dp)) {
@@ -103,24 +136,28 @@ fun CollectibleDetailScreen(
                         Text("购入信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         DetailRow("购买渠道", collectible.purchaseChannel)
                         DetailRow("店铺/卖家", collectible.purchaseShop)
-                        DetailRow("入手单价", "¥${collectible.purchasePrice}")
+                        DetailRow("入手单价", "\u00a5${collectible.purchasePrice}")
                         DetailRow("购入数量", "${collectible.purchaseQuantity}")
-                        DetailRow("购入运费", "¥${collectible.purchaseShipping}")
-                        DetailRow("心理预期价", "¥${collectible.expectedPrice}")
-                        DetailRow("总成本", "¥${String.format("%.2f", CollectibleAccounting.purchaseTotal(collectible))}")
+                        DetailRow("购入运费", "\u00a5${collectible.purchaseShipping}")
+                        DetailRow("心理预期价", "\u00a5${collectible.expectedPrice}")
+                        DetailRow("总成本", "\u00a5${String.format("%.2f", CollectibleAccounting.purchaseTotal(collectible))}")
                     }
                 }
 
-                if (collectible.sellPrice != null || collectible.sellDate != null) {
+                AnimatedVisibility(
+                    visible = collectible.sellPrice != null || collectible.sellDate != null,
+                    enter = fadeIn(tween(250)),
+                    exit = fadeOut(tween(250))
+                ) {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("卖出信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            collectible.sellPrice?.let { DetailRow("售出单价", "¥$it") }
+                            collectible.sellPrice?.let { DetailRow("售出单价", "\u00a5$it") }
                             collectible.sellQuantity?.let { DetailRow("售出数量", "$it") }
                             if (collectible.isFreeShipping) {
                                 DetailRow("运费", "包邮（卖家承担）")
                             } else {
-                                collectible.sellShipping?.let { DetailRow("售出运费", "¥$it") }
+                                collectible.sellShipping?.let { DetailRow("售出运费", "\u00a5$it") }
                             }
                             collectible.sellDate?.let {
                                 val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
@@ -132,14 +169,20 @@ fun CollectibleDetailScreen(
                     }
                 }
 
-                if (uiState.profitLoss != null) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("盈亏情况", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            DetailRow("本次核算成本", "¥${String.format("%.2f", uiState.profitLoss!!.totalCost)}")
-                            DetailRow("总营收", "¥${uiState.profitLoss!!.totalRevenue}")
-                            DetailRow("盈亏金额", "", profitLoss = uiState.profitLoss)
-                            DetailRow("盈亏比例", "${String.format("%.1f", uiState.profitLoss!!.profitRate)}%", profitLoss = uiState.profitLoss)
+                AnimatedVisibility(
+                    visible = uiState.profitLoss != null,
+                    enter = fadeIn(tween(250)),
+                    exit = fadeOut(tween(250))
+                ) {
+                    if (uiState.profitLoss != null) {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("盈亏情况", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                DetailRow("本次核算成本", "\u00a5${String.format("%.2f", uiState.profitLoss!!.totalCost)}")
+                                DetailRow("总营收", "\u00a5${uiState.profitLoss!!.totalRevenue}")
+                                DetailRow("盈亏金额", "", profitLoss = uiState.profitLoss)
+                                DetailRow("盈亏比例", "${String.format("%.1f", uiState.profitLoss!!.profitRate)}%", profitLoss = uiState.profitLoss)
+                            }
                         }
                     }
                 }

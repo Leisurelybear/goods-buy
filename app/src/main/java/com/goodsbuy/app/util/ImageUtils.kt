@@ -13,8 +13,10 @@ object ImageUtils {
             val fileName = "${UUID.randomUUID()}.jpg"
             val file = File(context.filesDir, "images/$fileName")
             file.parentFile?.mkdirs()
-            FileOutputStream(file).use { out ->
-                inputStream.copyTo(out)
+            inputStream.use { input ->
+                FileOutputStream(file).use { out ->
+                    input.copyTo(out)
+                }
             }
             file.absolutePath
         } catch (e: Exception) {

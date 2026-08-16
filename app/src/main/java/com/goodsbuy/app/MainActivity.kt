@@ -3,6 +3,10 @@ package com.goodsbuy.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
@@ -54,7 +58,11 @@ fun MainScreen(preferencesRepository: PreferencesRepository) {
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = slideInVertically(tween(250)) { it },
+                exit = slideOutVertically(tween(250)) { it },
+            ) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(

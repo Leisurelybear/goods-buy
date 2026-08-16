@@ -3,6 +3,12 @@ package com.goodsbuy.app.ui.collectible.form
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
@@ -22,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
-import com.goodsbuy.app.domain.model.StorageStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,11 +38,13 @@ fun CollectibleFormScreen(
     viewModel: CollectibleFormViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 9)
     ) { uris ->
-        uris.forEach { uri ->
+        val remainingSlots = (9 - uiState.imagePaths.size).coerceAtLeast(0)
+        uris.take(remainingSlots).forEach { uri ->
             viewModel.addImagePath(uri.toString())
         }
     }
@@ -46,10 +54,30 @@ fun CollectibleFormScreen(
     }
 
     LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) onNavigateBack()
+        if (uiState.isSaved) {
+            onNavigateBack()
+        }
     }
 
+    LaunchedEffect(uiState.saveError) {
+        uiState.saveError?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearSaveError()
+        }
+    }
+
+    val hasSellInfo = uiState.sellPrice.isNotBlank() ||
+        uiState.sellQuantity.isNotBlank() ||
+        uiState.sellShipping.isNotBlank() ||
+        uiState.isFreeShipping ||
+        uiState.buyerInfo.isNotBlank() ||
+        uiState.sellRemark.isNotBlank()
+    val showSellSection = hasSellInfo || uiState.status in listOf(
+        OrderStatus.LISTED, OrderStatus.SOLD, OrderStatus.GIFT, OrderStatus.LOST
+    )
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(if (collectibleId != null) "编辑藏品" else "添加藏品") },
@@ -57,8 +85,18 @@ fun CollectibleFormScreen(
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.save() }, enabled = uiState.name.isNotBlank()) {
-                        Icon(Icons.Default.Save, contentDescription = "保存")
+                    IconButton(
+                        onClick = viewModel::save,
+                        enabled = uiState.name.isNotBlank() && !uiState.isSaving && !uiState.isSaved
+                    ) {
+                        if (uiState.isSaving) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                if (uiState.isSaved) Icons.Default.Check else Icons.Default.Save,
+                                contentDescription = "保存"
+                            )
+                        }
                     }
                 }
             )
@@ -71,14 +109,21 @@ fun CollectibleFormScreen(
              // 图片区域
              Text("藏品图片", style = MaterialTheme.typography.titleMedium)
              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                 Button(onClick = { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                 Button(
+                     onClick = { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                     enabled = uiState.imagePaths.size < 9
+                 ) {
                      Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
                      Spacer(modifier = Modifier.width(4.dp))
                      Text("添加图片")
                  }
                  Text("${uiState.imagePaths.size}/9", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically))
              }
-             if (uiState.imagePaths.isNotEmpty()) {
+             AnimatedVisibility(
+                 visible = uiState.imagePaths.isNotEmpty(),
+                 enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+                 exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
+             ) {
                  Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                      uiState.imagePaths.forEachIndexed { index, path ->
                          androidx.compose.foundation.layout.Box {
@@ -103,45 +148,56 @@ fun CollectibleFormScreen(
              OutlinedTextField(
                  value = uiState.name,
                  onValueChange = { viewModel.updateField("name", it) },
-                 label = { Text("制品名称*") },
-                 placeholder = { Text("例如：雷丘 毛绒挂件") },
-                 modifier = Modifier.fillMaxWidth()
+                 label = { Text("制品名称") },
+                 placeholder = { Text("例如：宝可梦卡牌 路卡利欧 SR") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
              )
              OutlinedTextField(
                  value = uiState.category,
                  onValueChange = { viewModel.updateField("category", it) },
                  label = { Text("品类") },
-                 placeholder = { Text("例如：毛绒、立牌、徽章、盲盒") },
-                 modifier = Modifier.fillMaxWidth()
+                 placeholder = { Text("例如：卡牌、毛绒、手办") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
+             )
+             OutlinedTextField(
+                 value = uiState.type,
+                 onValueChange = { viewModel.updateField("type", it) },
+                 label = { Text("种类") },
+                 placeholder = { Text("例如：SR、常规款、限定款") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
              )
              OutlinedTextField(
                  value = uiState.ipName,
                  onValueChange = { viewModel.updateField("ipName", it) },
                  label = { Text("所属IP") },
-                 placeholder = { Text("例如：宝可梦、咒术回战、原神") },
-                 modifier = Modifier.fillMaxWidth()
+                 placeholder = { Text("例如：宝可梦、初音未来") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
              )
              OutlinedTextField(
                  value = uiState.seriesName,
                  onValueChange = { viewModel.updateField("seriesName", it) },
                  label = { Text("系列名称") },
-                 placeholder = { Text("例如：伊布家族、宿傩手指系列") },
-                 modifier = Modifier.fillMaxWidth()
+                 placeholder = { Text("例如：剑盾强化包、雪初音系列") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
              )
              OutlinedTextField(
                  value = uiState.characterTag,
                  onValueChange = { viewModel.updateField("characterTag", it) },
                  label = { Text("角色/CP") },
-                 placeholder = { Text("例如：皮卡丘、伏黑惠×五条悟") },
-                 modifier = Modifier.fillMaxWidth()
+                 placeholder = { Text("例如：路卡利欧、皮卡丘") },
+                 modifier = Modifier.fillMaxWidth(),
+                 singleLine = true
              )
-
-             Text("购入信息", style = MaterialTheme.typography.titleMedium)
              NumTextField(
                  value = uiState.purchasePrice,
                  onValueChange = { viewModel.updateField("purchasePrice", it) },
-                 label = "入手单价",
-                 placeholder = "例如：5800",
+                 label = "购买单价",
+                 placeholder = "例如：5000",
                  isDecimal = true,
                  modifier = Modifier.fillMaxWidth()
              )
@@ -183,53 +239,62 @@ fun CollectibleFormScreen(
                  modifier = Modifier.fillMaxWidth()
              )
 
-             Text("卖出信息", style = MaterialTheme.typography.titleMedium)
-             NumTextField(
-                 value = uiState.sellPrice,
-                 onValueChange = { viewModel.updateField("sellPrice", it) },
-                 label = "售出单价",
-                 placeholder = "例如：7000",
-                 isDecimal = true,
-                 modifier = Modifier.fillMaxWidth()
-             )
-             NumTextField(
-                 value = uiState.sellQuantity,
-                 onValueChange = { viewModel.updateField("sellQuantity", it) },
-                 label = "售出数量",
-                 placeholder = "例如：1",
-                 modifier = Modifier.fillMaxWidth()
-             )
-             NumTextField(
-                 value = uiState.sellShipping,
-                 onValueChange = { viewModel.updateField("sellShipping", it) },
-                 label = "售出运费",
-                 placeholder = "例如：500（买家承担）",
-                 isDecimal = true,
-                 modifier = Modifier.fillMaxWidth()
-             )
-             Row(
-                 modifier = Modifier.fillMaxWidth(),
-                 horizontalArrangement = Arrangement.SpaceBetween,
-                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+             // 卖出信息 - animated visibility based on status
+             AnimatedVisibility(
+                 visible = showSellSection,
+                 enter = expandVertically(tween(250)) + fadeIn(tween(250)),
+                 exit = shrinkVertically(tween(250)) + fadeOut(tween(250))
              ) {
-                 Text("包邮（卖家承担运费）", style = MaterialTheme.typography.bodyMedium)
-                 Switch(checked = uiState.isFreeShipping, onCheckedChange = { viewModel.updateFreeShipping(it) })
+                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                     Text("卖出信息", style = MaterialTheme.typography.titleMedium)
+                     NumTextField(
+                         value = uiState.sellPrice,
+                         onValueChange = { viewModel.updateField("sellPrice", it) },
+                         label = "售出单价",
+                         placeholder = "例如：7000",
+                         isDecimal = true,
+                         modifier = Modifier.fillMaxWidth()
+                     )
+                     NumTextField(
+                         value = uiState.sellQuantity,
+                         onValueChange = { viewModel.updateField("sellQuantity", it) },
+                         label = "售出数量",
+                         placeholder = "例如：1",
+                         modifier = Modifier.fillMaxWidth()
+                     )
+                     NumTextField(
+                         value = uiState.sellShipping,
+                         onValueChange = { viewModel.updateField("sellShipping", it) },
+                         label = "售出运费",
+                         placeholder = "例如：500（买家承担）",
+                         isDecimal = true,
+                         modifier = Modifier.fillMaxWidth()
+                     )
+                     Row(
+                         modifier = Modifier.fillMaxWidth(),
+                         horizontalArrangement = Arrangement.SpaceBetween,
+                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                     ) {
+                         Text("包邮（卖家承担运费）", style = MaterialTheme.typography.bodyMedium)
+                         Switch(checked = uiState.isFreeShipping, onCheckedChange = { viewModel.updateFreeShipping(it) })
+                     }
+                     OutlinedTextField(
+                         value = uiState.buyerInfo,
+                         onValueChange = { viewModel.updateField("buyerInfo", it) },
+                         label = { Text("买家信息") },
+                         placeholder = { Text("例如：闲鱼用户XXX、微博@XXX") },
+                         modifier = Modifier.fillMaxWidth()
+                     )
+                     OutlinedTextField(
+                         value = uiState.sellRemark,
+                         onValueChange = { viewModel.updateField("sellRemark", it) },
+                         label = { Text("售出备注") },
+                         placeholder = { Text("例如：已发货、买家确认收货") },
+                         modifier = Modifier.fillMaxWidth(),
+                         minLines = 2
+                     )
+                 }
              }
-             OutlinedTextField(
-                 value = uiState.buyerInfo,
-                 onValueChange = { viewModel.updateField("buyerInfo", it) },
-                 label = { Text("买家信息") },
-                 placeholder = { Text("例如：闲鱼用户XXX、微博@XXX") },
-                 modifier = Modifier.fillMaxWidth()
-             )
-             OutlinedTextField(
-                 value = uiState.sellRemark,
-                 onValueChange = { viewModel.updateField("sellRemark", it) },
-                 label = { Text("售出备注") },
-                 placeholder = { Text("例如：已发货、买家确认收货") },
-                 modifier = Modifier.fillMaxWidth(),
-                 minLines = 2
-             )
 
             Text("状态", style = MaterialTheme.typography.titleMedium)
             var statusExpanded by remember { mutableStateOf(false) }

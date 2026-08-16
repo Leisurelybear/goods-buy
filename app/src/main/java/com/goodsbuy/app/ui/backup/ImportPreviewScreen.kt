@@ -1,5 +1,7 @@
 package com.goodsbuy.app.ui.backup
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -115,29 +117,34 @@ fun ImportPreviewScreen(
                 }
             }
 
-            // Confirm button / progress
-            if (isImporting) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    val percent = (importProgress * 100).toInt()
-                    Text(
-                        "正在导入… $percent%",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    LinearProgressIndicator(
-                        progress = { importProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            } else {
-                Button(
-                    onClick = onConfirm,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    enabled = preview.willImport > 0
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("确认导入 ${preview.willImport} 条藏品")
+            Crossfade(
+                targetState = isImporting,
+                animationSpec = tween(250),
+                label = "import_action"
+            ) { importing ->
+                if (importing) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        val percent = (importProgress * 100).toInt()
+                        Text(
+                            "正在导入… $percent%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        LinearProgressIndicator(
+                            progress = { importProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        enabled = preview.willImport > 0
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("确认导入 ${preview.willImport} 条藏品")
+                    }
                 }
             }
         }

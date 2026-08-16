@@ -1,6 +1,13 @@
 package com.goodsbuy.app.ui.collectible.list
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,7 +35,11 @@ import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    androidx.compose.animation.ExperimentalAnimationApi::class,
+    ExperimentalFoundationApi::class
+)
 @Composable
 fun CollectibleListScreen(
     onNavigateToDetail: (Long) -> Unit,
@@ -100,163 +111,196 @@ fun CollectibleListScreen(
 
     Scaffold(
         topBar = {
-            if (uiState.isBatchMode) {
-                TopAppBar(
-                    title = { Text("批量操作  (${uiState.selectedIds.size} 项)") },
-                    navigationIcon = {
-                        IconButton(onClick = { viewModel.exitBatchMode() }) {
-                            Icon(Icons.Default.Close, contentDescription = "取消")
-                        }
-                    },
-                    actions = {
-                        val allSelected = uiState.selectedIds.size == uiState.collectibles.size && uiState.collectibles.isNotEmpty()
-                        TextButton(onClick = {
-                            if (allSelected) viewModel.clearSelection()
-                            else viewModel.selectAll(uiState.collectibles.map { it.id })
-                        }) {
-                            Text(if (allSelected) "取消全选" else "全选")
-                        }
-                        if (uiState.selectedIds.isNotEmpty()) {
-                            TextButton(onClick = { showDeleteConfirm = true }) {
-                                Text("删除", color = MaterialTheme.colorScheme.error)
+            AnimatedContent(
+                targetState = uiState.isBatchMode,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                label = "topbar_mode"
+            ) { isBatch ->
+                if (isBatch) {
+                    TopAppBar(
+                        title = { Text("批量操作  (${uiState.selectedIds.size} 项)") },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.exitBatchMode() }) {
+                                Icon(Icons.Default.Close, contentDescription = "取消")
+                            }
+                        },
+                        actions = {
+                            val allSelected = uiState.selectedIds.size == uiState.collectibles.size && uiState.collectibles.isNotEmpty()
+                            TextButton(onClick = {
+                                if (allSelected) {
+                                    uiState.selectedIds.forEach { viewModel.toggleSelect(it) }
+                                } else {
+                                    uiState.collectibles.forEach { c ->
+                                        if (!uiState.selectedIds.contains(c.id)) viewModel.toggleSelect(c.id)
+                                    }
+                                }
+                            }) {
+                                Text(if (allSelected) "取消全选" else "全选")
+                            }
+                            TextButton(onClick = {
+                                pendingDelete = null
+                                showDeleteConfirm = true
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
                             }
                         }
-                    }
-                )
-            }
-        },
-        floatingActionButton = {
-            if (!uiState.isBatchMode) {
-                FloatingActionButton(onClick = { onNavigateToForm(null) }) {
-                    Icon(Icons.Default.Add, contentDescription = "添加藏品")
+                    )
+                } else {
+                    TopAppBar(
+                        title = {
+                            Column {
+                                Text("谷的拜")
+                                AnimatedContent(
+                                    targetState = uiState.collectibles.size,
+                                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                                    label = "count_badge"
+                                ) { count ->
+                                    Text(
+                                        "$count 件藏品",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { onNavigateToForm(null) }) {
+                                Icon(Icons.Default.Add, contentDescription = "添加")
+                            }
+                        }
+                    )
                 }
             }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (!uiState.isBatchMode) {
-                if (prefs.galleryEntryHome) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Search bar
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it; viewModel.onSearchQueryChange(it.text) },
+                placeholder = { Text("搜索藏品名称、IP、角色…") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    AnimatedVisibility(
+                        visible = searchText.text.isNotEmpty(),
+                        enter = fadeIn(tween(150)),
+                        exit = fadeOut(tween(150))
                     ) {
-                        FilterChip(
-                            selected = true,
-                            onClick = {},
-                            label = { Text("网格") }
-                        )
-                        FilterChip(
-                            selected = false,
-                            onClick = onNavigateToGallery,
-                            label = { Text("图鉴") }
-                        )
+                        IconButton(onClick = { searchText = TextFieldValue(""); viewModel.onSearchQueryChange("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "清除")
+                        }
                     }
-                }
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { newValue ->
-                        searchText = newValue
-                        viewModel.onSearchQueryChange(newValue.text)
-                    },
-                    placeholder = { Text("搜索藏品、IP、角色...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    singleLine = true
-                )
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                singleLine = true
+            )
 
-                LazyRow(
+            // Status filter chips
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = uiState.selectedStatusFilter == null,
+                        onClick = { viewModel.onStatusFilterChange(null) },
+                        label = { Text("全部") }
+                    )
+                }
+                items(OrderStatus.entries) { status ->
+                    FilterChip(
+                        selected = uiState.selectedStatusFilter == status.name,
+                        onClick = { viewModel.onStatusFilterChange(status.name) },
+                        label = { Text(status.displayName) }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Sort control (can be hidden via settings to save space)
+            if (prefs.showSortControl) {
+                Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item {
-                        FilterChip(
-                            selected = uiState.selectedStatusFilter == null,
-                            onClick = { viewModel.onStatusFilterChange(null) },
-                            label = { Text("全部") }
-                        )
-                    }
-                    items(OrderStatus.entries) { status ->
-                        FilterChip(
-                            selected = uiState.selectedStatusFilter == status.name,
-                            onClick = { viewModel.onStatusFilterChange(status.name) },
-                            label = { Text(status.displayName) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Sort control (can be hidden via settings to save space)
-                if (prefs.showSortControl) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box {
-                            OutlinedButton(onClick = { sortMenuExpanded = true }) {
-                                Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("排序: ${uiState.sortField.label}")
-                            }
-                            DropdownMenu(
-                                expanded = sortMenuExpanded,
-                                onDismissRequest = { sortMenuExpanded = false }
-                            ) {
-                                SortField.entries.forEach { field ->
-                                    DropdownMenuItem(
-                                        text = { Text(field.label) },
-                                        onClick = {
-                                            viewModel.onSortFieldChange(field)
-                                            sortMenuExpanded = false
-                                        },
-                                        trailingIcon = if (uiState.sortField == field) {
-                                            { Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                        } else null
-                                    )
-                                }
+                    Box {
+                        OutlinedButton(onClick = { sortMenuExpanded = true }) {
+                            Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("排序: ${uiState.sortField.label}")
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false }
+                        ) {
+                            SortField.entries.forEach { field ->
+                                DropdownMenuItem(
+                                    text = { Text(field.label) },
+                                    onClick = {
+                                        viewModel.onSortFieldChange(field)
+                                        sortMenuExpanded = false
+                                    },
+                                    trailingIcon = if (uiState.sortField == field) {
+                                        { Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
                             }
                         }
-                        IconButton(onClick = { viewModel.onSortDirectionToggle() }) {
-                            Icon(
-                                if (uiState.sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                                contentDescription = "切换升序/降序",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                    }
+                    IconButton(onClick = { viewModel.onSortDirectionToggle() }) {
+                        Icon(
+                            if (uiState.sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                            contentDescription = "切换升序/降序",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    AnimatedContent(
+                        targetState = uiState.sortAscending,
+                        transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+                        label = "sort_dir"
+                    ) { ascending ->
                         Text(
-                            if (uiState.sortAscending) "升序" else "降序",
+                            if (ascending) "升序" else "降序",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (uiState.collectibles.isEmpty() && !uiState.isLoading) {
-                EmptyState()
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(if (uiState.isBatchMode) 3 else prefs.columns),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.collectibles, key = { it.id }) { collectible ->
-                        CollectibleCard(
-                            collectible = collectible,
-                            onClick = { onNavigateToDetail(collectible.id) },
-                            cardSize = prefs.cardSize.dp,
-                            showName = prefs.showName,
-                            showPrice = prefs.showPrice,
-                            showStatus = prefs.showStatus,
-                            fontSize = prefs.fontSize,
-                            onLongPress = { if (!uiState.isBatchMode) viewModel.showLongPressMenu(collectible) },
-                            isSelected = uiState.selectedIds.contains(collectible.id),
-                            onSelect = { viewModel.toggleSelect(collectible.id) },
-                            batchMode = uiState.isBatchMode
-                        )
+            AnimatedContent(
+                targetState = uiState.collectibles.isEmpty() && !uiState.isLoading,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                label = "list_or_empty"
+            ) { showEmpty ->
+                if (showEmpty) {
+                    EmptyState()
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (uiState.isBatchMode) 3 else prefs.columns),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.collectibles, key = { it.id }) { collectible ->
+                            CollectibleCard(
+                                collectible = collectible,
+                                onClick = { onNavigateToDetail(collectible.id) },
+                                cardSize = prefs.cardSize.dp,
+                                showName = prefs.showName,
+                                showPrice = prefs.showPrice,
+                                showStatus = prefs.showStatus,
+                                fontSize = prefs.fontSize,
+                                onLongPress = { if (!uiState.isBatchMode) viewModel.showLongPressMenu(collectible) },
+                                isSelected = uiState.selectedIds.contains(collectible.id),
+                                onSelect = { viewModel.toggleSelect(collectible.id) },
+                                batchMode = uiState.isBatchMode,
+                                modifier = Modifier.animateItemPlacement(tween(250))
+                            )
+                        }
                     }
                 }
             }

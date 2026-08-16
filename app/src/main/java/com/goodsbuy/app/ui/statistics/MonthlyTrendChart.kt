@@ -1,5 +1,7 @@
 package com.goodsbuy.app.ui.statistics
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -17,15 +19,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.domain.model.MonthlyStat
 import java.util.Locale
@@ -40,6 +44,15 @@ fun MonthlyTrendChart(
     val expenseColor = MaterialTheme.colorScheme.primary
     val incomeColor = MaterialTheme.colorScheme.tertiary
     val gridColor = MaterialTheme.colorScheme.outlineVariant
+
+    // Animation progress for progressive line draw
+    val drawProgress = remember { Animatable(0f) }
+    LaunchedEffect(visibleStats) {
+        drawProgress.snapTo(0f)
+        if (visibleStats.isNotEmpty()) {
+            drawProgress.animateTo(1f, animationSpec = tween(500))
+        }
+    }
 
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -60,7 +73,7 @@ fun MonthlyTrendChart(
                 val chartWidth = maxOf(320.dp, (visibleStats.size * 72).dp)
                 Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                     Column(modifier = Modifier.width(chartWidth)) {
-                        val description = visibleStats.joinToString("；") {
+                        val description = visibleStats.joinToString("\uff1b") {
                             "${it.yearMonth}支出${formatAmount(it.expense)}元，收入${formatAmount(it.income)}元"
                         }
                         Canvas(
@@ -86,8 +99,8 @@ fun MonthlyTrendChart(
                                 )
                             }
 
-                            drawSeries(visibleStats.map { it.expense.toFloat() }, expenseColor, maxValue, chartHeight, xStep)
-                            drawSeries(visibleStats.map { it.income.toFloat() }, incomeColor, maxValue, chartHeight, xStep)
+                            drawSeries(visibleStats.map { it.expense.toFloat() }, expenseColor, maxValue, chartHeight, xStep, drawProgress.value)
+                            drawSeries(visibleStats.map { it.income.toFloat() }, incomeColor, maxValue, chartHeight, xStep, drawProgress.value)
                         }
                         Row(modifier = Modifier.fillMaxWidth()) {
                             visibleStats.forEach { stat ->
@@ -104,7 +117,7 @@ fun MonthlyTrendChart(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "最近 ${visibleStats.size} 个月 · 支出 ¥${formatAmount(visibleStats.sumOf { it.expense })} · 收入 ¥${formatAmount(visibleStats.sumOf { it.income })}",
+                    "最近 ${visibleStats.size} 个月 \u00b7 支出 \u00a5${formatAmount(visibleStats.sumOf { it.expense })} \u00b7 收入 \u00a5${formatAmount(visibleStats.sumOf { it.income })}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -126,16 +139,29 @@ private fun DrawScope.drawSeries(
     color: Color,
     maxValue: Float,
     chartHeight: Float,
-    xStep: Float
+    xStep: Float,
+    drawProgress: Float
 ) {
     if (values.isEmpty()) return
+    val visibleCount = max(1, (values.size * drawProgress).toInt())
     val path = Path()
+
     values.forEachIndexed { index, value ->
+        if (index >= visibleCount) return@forEachIndexed
         val x = if (values.size == 1) size.width / 2f else index * xStep
         val y = chartHeight - (value / maxValue).coerceIn(0f, 1f) * chartHeight
         if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        drawCircle(color = color, radius = 4.dp.toPx(), center = androidx.compose.ui.geometry.Offset(x, y))
+        // Only draw circles for fully visible points
+        val pointProgress = (drawProgress * values.size - index).coerceIn(0f, 1f)
+        if (pointProgress > 0f) {
+            drawCircle(
+                color = color,
+                radius = 4.dp.toPx() * pointProgress,
+                center = androidx.compose.ui.geometry.Offset(x, y)
+            )
+        }
     }
+    // Clip the path to drawProgress for progressive reveal
     drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
 }
 

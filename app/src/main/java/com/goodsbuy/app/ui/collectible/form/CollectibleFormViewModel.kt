@@ -45,7 +45,7 @@ class CollectibleFormViewModel @Inject constructor(
                     isFreeShipping = collectible.isFreeShipping, sellDate = collectible.sellDate,
                     buyerInfo = collectible.buyerInfo ?: "", sellRemark = collectible.sellRemark ?: "",
                     status = collectible.status, storageStatus = collectible.storageStatus,
-                    imagePaths = collectible.imagePaths
+                    imagePaths = collectible.imagePaths, createdAt = collectible.createdAt
                 )
             }
         }
@@ -97,31 +97,40 @@ class CollectibleFormViewModel @Inject constructor(
     }
 
     fun save() {
+        if (_uiState.value.isSaving || _uiState.value.isSaved) return
         val state = _uiState.value
+        _uiState.update { it.copy(isSaving = true, saveError = null) }
         viewModelScope.launch {
-            val sellDate = when {
-                state.status == OrderStatus.SOLD && state.sellDate == null -> System.currentTimeMillis()
-                state.status != OrderStatus.SOLD -> null
-                else -> state.sellDate
+            try {
+                val sellDate = when {
+                    state.status == OrderStatus.SOLD && state.sellDate == null -> System.currentTimeMillis()
+                    state.status != OrderStatus.SOLD -> null
+                    else -> state.sellDate
+                }
+                val collectible = Collectible(
+                    id = state.id ?: 0, name = state.name, category = state.category, type = state.type,
+                    ipName = state.ipName, seriesName = state.seriesName, characterTag = state.characterTag,
+                    remark = state.remark, purchaseChannel = state.purchaseChannel, purchaseShop = state.purchaseShop,
+                    purchaseDate = state.purchaseDate, purchasePrice = state.purchasePrice.toDoubleOrNull() ?: 0.0,
+                    purchaseQuantity = state.purchaseQuantity.toIntOrNull() ?: 1,
+                    purchaseShipping = state.purchaseShipping.toDoubleOrNull() ?: 0.0,
+                    expectedPrice = state.expectedPrice.toDoubleOrNull() ?: 0.0,
+                    sellPrice = state.sellPrice.toDoubleOrNull(), sellQuantity = state.sellQuantity.toIntOrNull(),
+                    sellShipping = state.sellShipping.toDoubleOrNull(), isFreeShipping = state.isFreeShipping,
+                    sellDate = sellDate, buyerInfo = state.buyerInfo.ifBlank { null }, sellRemark = state.sellRemark.ifBlank { null },
+                    status = state.status, storageStatus = state.storageStatus, imagePaths = state.imagePaths,
+                    createdAt = state.createdAt,
+                    updatedAt = System.currentTimeMillis()
+                )
+                if (state.id != null) repository.updateCollectible(collectible) else repository.insertCollectible(collectible)
+                _uiState.update { it.copy(isSaving = false, isSaved = true) }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isSaving = false, saveError = "保存失败，请重试") }
             }
-            val collectible = Collectible(
-                id = state.id ?: 0, name = state.name, category = state.category, type = state.type,
-                ipName = state.ipName, seriesName = state.seriesName, characterTag = state.characterTag,
-                remark = state.remark, purchaseChannel = state.purchaseChannel, purchaseShop = state.purchaseShop,
-                purchaseDate = state.purchaseDate, purchasePrice = state.purchasePrice.toDoubleOrNull() ?: 0.0,
-                purchaseQuantity = state.purchaseQuantity.toIntOrNull() ?: 1,
-                purchaseShipping = state.purchaseShipping.toDoubleOrNull() ?: 0.0,
-                expectedPrice = state.expectedPrice.toDoubleOrNull() ?: 0.0,
-                sellPrice = state.sellPrice.toDoubleOrNull(), sellQuantity = state.sellQuantity.toIntOrNull(),
-                sellShipping = state.sellShipping.toDoubleOrNull(), isFreeShipping = state.isFreeShipping,
-                sellDate = sellDate, buyerInfo = state.buyerInfo.ifBlank { null }, sellRemark = state.sellRemark.ifBlank { null },
-                status = state.status, storageStatus = state.storageStatus, imagePaths = state.imagePaths,
-                createdAt = if (state.id != null) 0 else System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            )
-            if (state.id != null) repository.updateCollectible(collectible) else repository.insertCollectible(collectible)
-            _uiState.update { it.copy(isSaved = true) }
         }
     }
-}
 
+    fun clearSaveError() {
+        _uiState.update { it.copy(saveError = null) }
+    }
+}

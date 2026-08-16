@@ -1,5 +1,8 @@
 package com.goodsbuy.app.ui.collectible.list
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -9,8 +12,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.domain.model.OrderStatus
@@ -28,7 +37,21 @@ fun LongPressMenu(
     showBatchSelect: Boolean = true
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        var visible by remember { mutableFloatStateOf(0f) }
+        LaunchedEffect(Unit) { visible = 1f }
+
+        val animOffset by animateFloatAsState(
+            targetValue = visible,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+            label = "menu_offset"
+        )
+
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .offset(y = (24 * (1f - animOffset)).dp)
+                .alpha(animOffset)
+        ) {
             Text(
                 text = state.collectible.name,
                 style = MaterialTheme.typography.titleSmall,
@@ -82,8 +105,8 @@ private fun MenuRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
-    isDanger: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDanger: Boolean = false
 ) {
     Row(
         modifier = modifier

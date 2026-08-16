@@ -10,14 +10,14 @@ license: MIT
 
 ## 前置条件
 
-- 项目根目录：`G:/Coding_Project/IdeaProjects/goods_collector`
-- JDK 17 路径：`C:/Users/Jason/.jdks/dragonwell-17.0.18`
-- Gradle wrapper：`./gradlew`（Windows Git Bash）
+- 项目根目录：`G:\Coding_Project\IdeaProjects\goods_collector`
+- JDK 17 路径：`C:\Users\Jason\.jdks\dragonwell-17.0.18`
+- Gradle wrapper：`gradlew.bat`（Windows PowerShell）
 
 ## 构建命令
 
-```bash
-JAVA_HOME=/c/Users/Jason/.jdks/dragonwell-17.0.18 bash gradlew assembleDebug
+```powershell
+$env:JAVA_HOME = "C:\Users\Jason\.jdks\dragonwell-17.0.18"; & .\gradlew.bat assembleDebug *> build.log; Write-Output "EXITCODE=$LASTEXITCODE"
 ```
 
 ## 输出位置

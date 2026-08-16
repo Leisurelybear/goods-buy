@@ -29,6 +29,9 @@ data class CollectibleFormUiState(
     val status: OrderStatus = OrderStatus.OWNED,
     val storageStatus: StorageStatus = StorageStatus.IN_STOCK,
     val imagePaths: List<String> = emptyList(),
+    val createdAt: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
-    val isSaved: Boolean = false
+    val isSaving: Boolean = false,
+    val isSaved: Boolean = false,
+    val saveError: String? = null
 )
