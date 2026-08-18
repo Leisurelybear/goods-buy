@@ -1,6 +1,6 @@
 ---
 name: build-apk
-description: 构建 Android Debug APK。使用 Dragonwell JDK 17 解决 Gradle 插件兼容性，输出到 app/build/outputs/apk/debug/app-debug.apk
+description: 构建 Android Debug APK。使用 JDK 17 解决 Gradle 插件兼容性，输出到 app/build/outputs/apk/debug/app-debug.apk
 license: MIT
 ---
 
@@ -10,14 +10,16 @@ license: MIT
 
 ## 前置条件
 
-- 项目根目录：`G:\Coding_Project\IdeaProjects\goods_collector`
-- JDK 17 路径：`C:\Users\Jason\.jdks\dragonwell-17.0.18`
+- JDK 17（Dragonwell 或其他发行版均可，需支持 AGP 8.2+）
 - Gradle wrapper：`gradlew.bat`（Windows PowerShell）
+- Android SDK（见 `local.properties`）
 
 ## 构建命令
 
+将 `JAVA_HOME` 指向 JDK 17 后执行：
+
 ```powershell
-$env:JAVA_HOME = "C:\Users\Jason\.jdks\dragonwell-17.0.18"; & .\gradlew.bat assembleDebug *> build.log; Write-Output "EXITCODE=$LASTEXITCODE"
+$env:JAVA_HOME = "<你的 JDK 17 路径>"; & .\gradlew.bat assembleDebug *> build.log; Write-Output "EXITCODE=$LASTEXITCODE"
 ```
 
 ## 输出位置

@@ -8,7 +8,7 @@
 
 ## 背景
 
-App 只支持导入 **ZIP 备份包**（根目录 `manifest.json` + 可选 `images/`）。Excel 仅能通过仓库根目录 `convert_excel.py` 转成 `manifest.json` 后打包导入。本 skill 自包含，不依赖 `convert_excel.py`：AI 直接读取源文件、清洗、生成 `manifest.json`，并用 PowerShell `Compress-Archive` 打包。
+App 只支持导入 **ZIP 备份包**（根目录 `manifest.json` + 可选 `images/`）。本 skill 自包含：AI 直接读取任意格式的源文件、清洗、生成 `manifest.json`，并用 PowerShell `Compress-Archive` 打包。
 
 ## 目标格式（manifest.json 规范）
 
@@ -101,7 +101,7 @@ PowerShell `Compress-Archive -Path .\manifest.json -DestinationPath <名字>.zip
 
 ## 表头别名映射
 
-内置完整别名表（复用 `convert_excel.py:62-87` 并扩充常见变体）。模糊匹配规则：表头按包含关系匹配别名，多义时交给用户确认。核心字段别名示例：
+内置完整别名表（基于常见表头变体归纳）。模糊匹配规则：表头按包含关系匹配别名，多义时交给用户确认。核心字段别名示例：
 
 - 名称 → `name`（名称/名字/商品名/品名）
 - 种类 → `category`（种类/类别/分类/类型大类）
