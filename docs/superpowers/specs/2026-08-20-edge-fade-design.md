@@ -35,7 +35,7 @@
 
 ## 原图保留与文件约定
 
-- 首次编辑时把原图备份为伴生文件 `{base}_orig.jpg`（图片本体）与 `{base}_orig.???`（如非 jpg，按实际格式）；展示路径改指向 `{base}_transparent.png`。
+- 首次编辑时把原图备份为伴生文件 `{base}_orig.jpg`（原图始终为 jpg，由 `copyImageToInternalStorage` 保证）；展示路径改指向 `{base}_transparent.png`。
 - 再次进入编辑时从 `_orig` 文件读取原始像素，可任意重调。
 - 「恢复原图」：删除 `_transparent.png` 与 `_orig` 文件，展示路径恢复为原图路径。
 - 文件清理：`removeImagePath`、`discardDraft`、`save` 中删除图片时，同步删除伴生 `_orig` / `_transparent.png` 文件。
