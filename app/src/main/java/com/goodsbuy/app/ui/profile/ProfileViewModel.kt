@@ -41,7 +41,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val draft = draftStore.load(key)
             val persistedPaths = draft?.id?.let { repository.getCollectibleById(it)?.imagePaths }.orEmpty().toSet()
-            draft?.imagePaths?.filterNot(persistedPaths::contains)?.forEach { ImageUtils.deleteImage(context, it) }
+            draft?.imagePaths?.filterNot(persistedPaths::contains)?.forEach { ImageUtils.deleteImageWithCompanions(context, it) }
             draftStore.delete(key)
             refreshDrafts()
         }
