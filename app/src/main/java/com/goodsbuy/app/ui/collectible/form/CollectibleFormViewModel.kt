@@ -154,6 +154,19 @@ class CollectibleFormViewModel @Inject constructor(
         }
     }
 
+    fun addCapturedImage(resultPath: String, sourcePath: String) {
+        if (_uiState.value.imagePaths.size >= MAX_IMAGE_COUNT) return
+        _uiState.update { state ->
+            state.copy(imagePaths = (state.imagePaths + resultPath).take(MAX_IMAGE_COUNT))
+        }
+        if (resultPath != sourcePath) ImageUtils.deleteImage(sourcePath)
+        scheduleDraftSave()
+    }
+
+    fun discardCapturedImage(path: String) {
+        ImageUtils.deleteImageWithCompanions(path)
+    }
+
     fun replaceImagePath(index: Int, newPath: String) {
         if (index !in _uiState.value.imagePaths.indices) return
         _uiState.update { state ->
