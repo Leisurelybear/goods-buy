@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -55,6 +56,8 @@ fun CollectibleFormScreen(
         label = "draft_saved_alpha"
     )
 
+    var editingImageIndex by remember { mutableStateOf<Int?>(null) }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = GalleryImagePickerContract(maxItems = 9)
     ) { uris -> viewModel.addImages(uris) }
@@ -84,6 +87,7 @@ fun CollectibleFormScreen(
         OrderStatus.LISTED, OrderStatus.SOLD, OrderStatus.GIFT, OrderStatus.LOST
     )
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -166,7 +170,9 @@ fun CollectibleFormScreen(
              ) {
                  Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                      uiState.imagePaths.forEachIndexed { index, path ->
-                         androidx.compose.foundation.layout.Box {
+                         androidx.compose.foundation.layout.Box(
+                             modifier = Modifier.clickable { editingImageIndex = index }
+                         ) {
                              AsyncImage(
                                  model = path,
                                  contentDescription = null,
@@ -372,6 +378,18 @@ fun CollectibleFormScreen(
                 minLines = 2
             )
         }
+    }
+
+    uiState.imagePaths.getOrNull(editingImageIndex ?: -1)?.let { editPath ->
+        EdgeFadeEditScreen(
+            sourcePath = editPath,
+            onCancel = { editingImageIndex = null },
+            onDone = { newPath ->
+                editingImageIndex?.let { index -> viewModel.replaceImagePath(index, newPath) }
+                editingImageIndex = null
+            }
+        )
+    }
     }
 }
 
