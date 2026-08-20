@@ -38,8 +38,8 @@
 - `BackHandler` 改为覆盖 `editingImageIndex != null || pendingCapturePath != null`。
 
 **`CollectibleFormViewModel.kt` 改动**
-- 新增 `addImage(path)`：追加到 `imagePaths`（`(state.imagePaths + path).take(MAX_IMAGE_COUNT)`）→ `scheduleDraftSave()`。
-- 新增 `discardCapturedImage(path)`：`ImageUtils.deleteImageWithCompanions(path)` 删除文件（拍摄原图无伴生文件，幂等安全）。
+- 新增 `addCapturedImage(resultPath, sourcePath)`：追加 `resultPath` 到 `imagePaths`（`(state.imagePaths + resultPath).take(MAX_IMAGE_COUNT)`）→ `scheduleDraftSave()`；当 `resultPath != sourcePath`（已烘焙 PNG）时删除拍摄原图 `sourcePath`（避免孤儿文件），否则保留（原图即最终图，0% 确认/恢复原图场景）。
+- 新增 `discardCapturedImage(path)`：`ImageUtils.deleteImageWithCompanions(path)` 丢弃拍摄文件（取消场景；此时未烘焙，仅有原图，安全）。
 
 **`EdgeFadeEditScreen.kt`**：零改动。
 
@@ -50,7 +50,9 @@
   ├─ 从相册选择 → 现有 imagePickerLauncher → addImages(uri 列表)      [不变]
   └─ 拍照 → 系统相机 App → 写入 filesDir/images/{UUID}.jpg
        ├─ 成功 → pendingCapturePath = 文件路径 → 覆盖层打开编辑页
-       │    ├─ 确认 → addImage(resultPath) → 入列表 → 缩略图出现
+       │    ├─ 确认 → addCapturedImage(resultPath, sourcePath) → 入列表；
+       │    │        若 resultPath ≠ sourcePath（已烘焙）删除拍摄原图，保留 _orig + PNG；
+       │    │        否则保留原图（0% 确认/恢复原图）
        │    └─ 取消/返回 → discardCapturedImage(path) → 文件删除
        └─ 相机取消/失败 → contract 删除空文件 → 无残留
 ```
@@ -65,8 +67,8 @@
 ### 测试
 
 - `CollectibleFormViewModel` 新增单元测试（mockk 仓库/草稿存储 + 真实临时文件）：
-  - `addImage` 追加路径并遵守 9 张上限。
-  - `discardCapturedImage` 删除目标文件。
+  - `addCapturedImage` 追加路径并遵守 9 张上限；`resultPath != sourcePath` 时删除 sourcePath；相等时保留。
+  - `discardCapturedImage` 删除目标文件及伴生文件。
 - 拍照 contract 依赖 Android 框架（FileProvider/ContentUri），不引入 Robolectric，不做 JVM 单测。
 
 ## 代码改动点
