@@ -97,7 +97,7 @@ class CollectibleFormViewModel @Inject constructor(
     fun discardDraft() {
         val draft = pendingDraft ?: return
         val keepPaths = originalImagePaths.toSet()
-        draft.imagePaths.filterNot(keepPaths::contains).forEach { ImageUtils.deleteImage(context, it) }
+        draft.imagePaths.filterNot(keepPaths::contains).forEach { ImageUtils.deleteImageWithCompanions(context, it) }
         initializedKey?.let(draftStore::delete)
         draftSaveJob?.cancel()
         hasUnsavedDraftChanges = false
@@ -155,9 +155,17 @@ class CollectibleFormViewModel @Inject constructor(
         }
     }
 
+    fun replaceImagePath(index: Int, newPath: String) {
+        if (index !in _uiState.value.imagePaths.indices) return
+        _uiState.update { state ->
+            state.copy(imagePaths = state.imagePaths.mapIndexed { i, path -> if (i == index) newPath else path })
+        }
+        scheduleDraftSave()
+    }
+
     fun removeImagePath(index: Int) {
         val path = _uiState.value.imagePaths.getOrNull(index) ?: return
-        if (path !in originalImagePaths) ImageUtils.deleteImage(context, path)
+        if (path !in originalImagePaths) ImageUtils.deleteImageWithCompanions(context, path)
         _uiState.update { state -> state.copy(imagePaths = state.imagePaths.filterIndexed { i, _ -> i != index }) }
         scheduleDraftSave()
     }
@@ -197,7 +205,15 @@ class CollectibleFormViewModel @Inject constructor(
                     createdAt = state.createdAt, updatedAt = System.currentTimeMillis()
                 )
                 if (state.id != null) repository.updateCollectible(collectible) else repository.insertCollectible(collectible)
-                originalImagePaths.filterNot(state.imagePaths::contains).forEach { ImageUtils.deleteImage(context, it) }
+                val currentBases = state.imagePaths.map { ImageUtils.baseOfImage(it) }.toSet()
+                originalImagePaths.forEach { origPath ->
+                    if (state.imagePaths.contains(origPath)) return@forEach
+                    if (ImageUtils.baseOfImage(origPath) in currentBases) {
+                        ImageUtils.deleteImage(context, origPath)
+                    } else {
+                        ImageUtils.deleteImageWithCompanions(context, origPath)
+                    }
+                }
                 draftSaveJob?.cancel()
                 hasUnsavedDraftChanges = false
                 initializedKey?.let(draftStore::delete)
