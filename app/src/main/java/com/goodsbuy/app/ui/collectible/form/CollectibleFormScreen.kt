@@ -1,5 +1,8 @@
 package com.goodsbuy.app.ui.collectible.form
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedVisibility
@@ -20,6 +23,8 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,11 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,13 +64,29 @@ fun CollectibleFormScreen(
         label = "draft_saved_alpha"
     )
 
-    var editingImageIndex by remember { mutableStateOf<Int?>(null) }
+var editingImageIndex by remember { mutableStateOf<Int?>(null) }
+    var pendingCapturePath by remember { mutableStateOf<String?>(null) }
+    var showImageSourceMenu by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val hasCamera = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
 
-    BackHandler(enabled = editingImageIndex != null) { editingImageIndex = null }
+    BackHandler(enabled = editingImageIndex != null || pendingCapturePath != null) {
+        if (pendingCapturePath != null) {
+            pendingCapturePath?.let { viewModel.discardCapturedImage(it) }
+            pendingCapturePath = null
+        } else {
+            editingImageIndex = null
+        }
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = GalleryImagePickerContract(maxItems = 9)
     ) { uris -> viewModel.addImages(uris) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = CameraCaptureContract()
+    ) { uri -> if (uri != null) pendingCapturePath = uri.path }
 
     LaunchedEffect(collectibleId) { viewModel.initialize(collectibleId) }
 
@@ -157,13 +180,13 @@ fun CollectibleFormScreen(
                          color = MaterialTheme.colorScheme.onSurfaceVariant
                      )
                  }
-                 FilledTonalButton(
-                     onClick = { imagePickerLauncher.launch(Unit) },
+FilledTonalButton(
+                     onClick = { showImageSourceMenu = true },
                      enabled = uiState.imagePaths.size < 9
                  ) {
                      Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
                      Spacer(modifier = Modifier.width(6.dp))
-                     Text("从相册添加")
+                     Text("添加图片")
                  }
              }
              AnimatedVisibility(
@@ -383,15 +406,62 @@ fun CollectibleFormScreen(
         }
     }
 
-    uiState.imagePaths.getOrNull(editingImageIndex ?: -1)?.let { editPath ->
+    val editingPath = editingImageIndex?.let { uiState.imagePaths.getOrNull(it) } ?: pendingCapturePath
+    editingPath?.let { editPath ->
         EdgeFadeEditScreen(
             sourcePath = editPath,
-            onCancel = { editingImageIndex = null },
+            onCancel = {
+                if (pendingCapturePath != null) {
+                    viewModel.discardCapturedImage(editPath)
+                    pendingCapturePath = null
+                } else {
+                    editingImageIndex = null
+                }
+            },
             onDone = { newPath ->
-                editingImageIndex?.let { index -> viewModel.replaceImagePath(index, newPath) }
-                editingImageIndex = null
+                if (pendingCapturePath != null) {
+                    viewModel.addCapturedImage(newPath, editPath)
+                    pendingCapturePath = null
+                } else {
+                    editingImageIndex?.let { index -> viewModel.replaceImagePath(index, newPath) }
+                    editingImageIndex = null
+                }
             }
         )
+    }
+
+    if (showImageSourceMenu) {
+        ModalBottomSheet(onDismissRequest = { showImageSourceMenu = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                ListItem(
+                    headlineContent = { Text("从相册选择") },
+                    leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        showImageSourceMenu = false
+                        imagePickerLauncher.launch(Unit)
+                    }
+                )
+                if (hasCamera) {
+                    ListItem(
+                        headlineContent = { Text("拍照") },
+                        leadingContent = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            showImageSourceMenu = false
+                            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                try {
+                                    cameraLauncher.launch(Unit)
+                                } catch (_: Exception) {
+                                    scope.launch { snackbarHostState.showSnackbar("无法打开相机") }
+                                }
+                            } else {
+                                scope.launch { snackbarHostState.showSnackbar("未找到相机应用") }
+                            }
+                        }
+                    )
+                }
+            }
+        }
     }
     }
 }
