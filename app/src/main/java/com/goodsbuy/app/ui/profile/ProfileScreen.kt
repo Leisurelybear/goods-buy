@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
@@ -38,8 +39,9 @@ fun ProfileScreen(
     onNavigateToForm: (Long?) -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    var showSettings by remember { mutableStateOf(false) }
+var showSettings by remember { mutableStateOf(false) }
     var showDrafts by remember { mutableStateOf(false) }
+    var showDeleteLogsDialog by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -280,18 +282,19 @@ fun ProfileScreen(
                             prefs = prefs.copy(loggingEnabled = it); preferencesRepository.save(prefs)
                             com.goodsbuy.app.util.AppLogger.setEnabled(it)
                         }
-                        if (prefs.loggingEnabled) {
-                            val ctx = androidx.compose.ui.platform.LocalContext.current
+                        val ctx = androidx.compose.ui.platform.LocalContext.current
                             val logFile = com.goodsbuy.app.util.AppLogger.getLogFile()
-                            if (logFile != null && logFile.exists()) {
+                            val crashFile = com.goodsbuy.app.util.AppLogger.getCrashLogFile()
+                            if (logFile != null || crashFile != null) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().clickable {
-                                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                                            ctx, "${ctx.packageName}.fileprovider", logFile
-                                        )
-                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                        val files = listOfNotNull(logFile, crashFile)
+                                        val uris = ArrayList(files.map {
+                                            androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", it)
+                                        })
+                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+                                            type = "*/*"
+                                            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
                                             addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                         ctx.startActivity(android.content.Intent.createChooser(shareIntent, "分享日志文件"))
@@ -302,14 +305,24 @@ fun ProfileScreen(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text("导出日志", style = MaterialTheme.typography.bodyLarge)
-                                        Text("分享或查看 app.log", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+Text("分享 app.log / crash.log", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable { showDeleteLogsDialog = true },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text("删除日志", style = MaterialTheme.typography.bodyLarge)
+Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
                         }
                     }
-                }
-            } else if (showDrafts) {
+                } else if (showDrafts) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (drafts.isEmpty()) {
@@ -419,6 +432,24 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showDeleteLogsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteLogsDialog = false },
+            title = { Text("删除日志") },
+            text = { Text("将删除 app.log 和 crash.log 以释放空间，删除后仍会继续记录新日志。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.goodsbuy.app.util.AppLogger.deleteLogs()
+                    showDeleteLogsDialog = false
+                    scope.launch { snackbarHostState.showSnackbar("日志已删除") }
+                }) { Text("删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteLogsDialog = false }) { Text("取消") }
+            }
+        )
     }
 }
 

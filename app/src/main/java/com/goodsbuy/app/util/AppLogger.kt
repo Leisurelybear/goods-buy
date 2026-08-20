@@ -19,6 +19,7 @@ object AppLogger {
     private const val TAG = "GoodsBuy"
     private const val LOG_DIR = "logs"
     private const val LOG_FILE = "app.log"
+    private const val CRASH_FILE = "crash.log"
     private const val MAX_FILE_SIZE = 512 * 1024L  // 512 KB
 
     @Volatile
@@ -94,5 +95,44 @@ object AppLogger {
     fun getLogFile(): File? {
         val ctx = context ?: return null
         return File(ctx.filesDir, "$LOG_DIR/$LOG_FILE").takeIf { it.exists() }
+    }
+
+    /** Returns the crash log file (unconditional), or null if never initialized. */
+    fun getCrashLogFile(): File? {
+        val ctx = context ?: return null
+        return File(ctx.filesDir, "$LOG_DIR/$CRASH_FILE").takeIf { it.exists() }
+    }
+
+    /** Writes a crash stack trace to crash.log regardless of the logging toggle. */
+    fun logCrash(throwable: Throwable) {
+        val ctx = context ?: return
+        try {
+            val logDir = File(ctx.filesDir, LOG_DIR)
+            if (!logDir.exists()) logDir.mkdirs()
+            val crashFile = File(logDir, CRASH_FILE)
+            val ts = dateFormat.format(Date())
+            val sw = StringWriter()
+            val pw = PrintWriter(sw)
+            throwable.printStackTrace(pw)
+            crashFile.appendText("$ts CRASH on ${Thread.currentThread().name}:\n${sw}\n")
+        } catch (_: Exception) {
+            // Logging must never crash the app
+        }
+    }
+
+    /** Deletes app.log, its backup and crash.log to free space. Logging continues seamlessly. */
+    fun deleteLogs() {
+        val ctx = context ?: return
+        try {
+            val logDir = File(ctx.filesDir, LOG_DIR)
+            File(logDir, LOG_FILE).delete()
+            File(logDir, "$LOG_FILE.bak").delete()
+            File(logDir, CRASH_FILE).delete()
+            if (logDir.exists() && logDir.listFiles().isNullOrEmpty()) {
+                logDir.delete()
+            }
+        } catch (_: Exception) {
+            // Logging must never crash the app
+        }
     }
 }

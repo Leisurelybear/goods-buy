@@ -226,6 +226,11 @@ class CollectibleFormViewModel @Inject constructor(
                         ImageUtils.deleteImageWithCompanions(origPath)
                     }
                 }
+                state.imagePaths.forEach { path ->
+                    if (ImageUtils.isEditedImage(path)) {
+                        ImageUtils.deleteOriginalCompanions(path)
+                    }
+                }
                 draftSaveJob?.cancel()
                 hasUnsavedDraftChanges = false
                 initializedKey?.let(draftStore::delete)

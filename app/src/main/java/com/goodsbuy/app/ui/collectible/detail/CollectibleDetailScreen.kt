@@ -1,5 +1,6 @@
 package com.goodsbuy.app.ui.collectible.detail
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -8,22 +9,32 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,21 +54,23 @@ fun CollectibleDetailScreen(
     viewModel: CollectibleDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var viewerIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(collectibleId) { viewModel.loadCollectible(collectibleId) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(uiState.collectible?.name ?: "藏品详情") },
-                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") } },
-                actions = {
-                    IconButton(onClick = onNavigateToEdit) { Icon(Icons.Default.Edit, contentDescription = "编辑") }
-                    IconButton(onClick = { viewModel.requestDelete() }) { Icon(Icons.Default.Delete, contentDescription = "删除") }
-                }
-            )
-        }
-    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(uiState.collectible?.name ?: "藏品详情") },
+                    navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") } },
+                    actions = {
+                        IconButton(onClick = onNavigateToEdit) { Icon(Icons.Default.Edit, contentDescription = "编辑") }
+                        IconButton(onClick = { viewModel.requestDelete() }) { Icon(Icons.Default.Delete, contentDescription = "删除") }
+                    }
+                )
+            }
+        ) { padding ->
         val collectible = uiState.collectible
 
         if (uiState.showDeleteDialog) {
@@ -104,10 +117,11 @@ fun CollectibleDetailScreen(
                     .offset(y = contentOffsetY.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                 if (collectible.imagePaths.isNotEmpty()) {
+if (collectible.imagePaths.isNotEmpty()) {
                      DetailImageGallery(
                          name = collectible.name,
-                         imagePaths = collectible.imagePaths
+                         imagePaths = collectible.imagePaths,
+                         onImageClick = { viewerIndex = it }
                      )
                  }
 
@@ -202,10 +216,21 @@ fun CollectibleDetailScreen(
             }
         }
     }
+
+    viewerIndex?.let { initialIndex ->
+        uiState.collectible?.imagePaths?.takeIf { it.isNotEmpty() }?.let { paths ->
+            FullScreenImageViewer(
+                imagePaths = paths,
+                initialIndex = initialIndex,
+                onDismiss = { viewerIndex = null }
+            )
+        }
+    }
+}
 }
 
 @Composable
-private fun DetailImageGallery(name: String, imagePaths: List<String>) {
+private fun DetailImageGallery(name: String, imagePaths: List<String>, onImageClick: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -223,16 +248,16 @@ private fun DetailImageGallery(name: String, imagePaths: List<String>) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(end = 16.dp)
         ) {
-            itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path ->
-                Box {
+itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path ->
+                Box(modifier = Modifier.clickable { onImageClick(index) }) {
                     AsyncImage(
                         model = path,
                         contentDescription = "$name 图片 ${index + 1}",
                         modifier = Modifier
-                            .fillParentMaxWidth(0.88f)
-                            .aspectRatio(4f / 3f)
+                            .width(96.dp)
+                            .height(128.dp)
                             .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                     if (imagePaths.size > 1) {
                         Surface(
@@ -263,6 +288,53 @@ fun DetailRow(label: String, value: String, profitLoss: com.goodsbuy.app.domain.
             ProfitLossText(profitLoss = profitLoss)
         } else {
             Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FullScreenImageViewer(
+    imagePaths: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    val pagerState = rememberPagerState(
+        initialPage = initialIndex.coerceIn(0, (imagePaths.size - 1).coerceAtLeast(0))
+    ) { imagePaths.size }
+    BackHandler { onDismiss() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+    ) {
+        HorizontalPager(state = pagerState) { page ->
+            AsyncImage(
+                model = imagePaths.getOrNull(page),
+                contentDescription = "大图 ${page + 1}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "${pagerState.currentPage + 1}/${imagePaths.size}",
+                color = Color.White,
+                style = MaterialTheme.typography.labelLarge
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White)
+            }
         }
     }
 }

@@ -15,6 +15,12 @@ class GoodsBuyApp : Application() {
     override fun onCreate() {
         super.onCreate()
         AppLogger.init(this, preferencesRepository.loggingEnabled)
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            AppLogger.logCrash(throwable)
+            AppLogger.e("Crash", "Uncaught on ${thread.name}: ${throwable.message}", throwable)
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
         AppLogger.i("App", "Application started, logging=${preferencesRepository.loggingEnabled}")
     }
 }

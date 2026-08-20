@@ -74,11 +74,12 @@ object ImageUtils {
         return try {
             val source = ImageDecoder.createSource(File(path))
             ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 val sample = sampleSizeFor(info.size.width, info.size.height, maxDimension)
                 if (sample > 1) decoder.setTargetSampleSize(sample)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.e("Fade", "decodeDownscaled failed: $path", e)
             null
         }
     }
@@ -87,13 +88,7 @@ object ImageUtils {
         return try {
             if (intensity <= 0f) return displayPath
             val base = baseOfImage(displayPath)
-            val origFile = File(origBackupPath(base))
-            val origExists = origFile.exists()
-            val sourcePath = if (origExists) origBackupPath(base) else displayPath
-            if (!origExists && !isEditedImage(displayPath)) {
-                File(displayPath).copyTo(origFile)
-            }
-            val src = decodeDownscaled(sourcePath, MAX_FULL_DIMENSION) ?: return null
+            val src = decodeDownscaled(displayPath, MAX_FULL_DIMENSION) ?: return null
             val w = src.width
             val h = src.height
             val pixels = IntArray(w * h)
@@ -108,7 +103,7 @@ object ImageUtils {
             outBmp.recycle()
             png.absolutePath
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.e("Fade", "applyEdgeFade failed: $displayPath", e)
             null
         }
     }
@@ -116,26 +111,36 @@ object ImageUtils {
     fun resetEdgeFade(displayPath: String): String? {
         return try {
             val base = baseOfImage(displayPath)
+            val png = File(transparentPngPath(base))
             val original = File(originalJpgPath(base))
-            if (original.exists()) {
-                val png = File(transparentPngPath(base))
-                val orig = File(origBackupPath(base))
+            val backup = File(origBackupPath(base))
+            val restoreFrom = when {
+                original.exists() -> original
+                backup.exists() -> backup
+                else -> null
+            }
+            if (restoreFrom != null) {
                 if (png.exists()) png.delete()
-                if (orig.exists()) orig.delete()
-                original.absolutePath
+                if (backup.exists() && restoreFrom != backup) backup.delete()
+                restoreFrom.absolutePath
             } else {
-                val orig = File(origBackupPath(base))
-                if (orig.exists()) {
-                    val png = File(transparentPngPath(base))
-                    if (png.exists()) png.delete()
-                    orig.absolutePath
-                } else {
-                    displayPath
-                }
+                displayPath
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.e("Fade", "resetEdgeFade failed: $displayPath", e)
             null
+        }
+    }
+
+    /** Deletes the original jpg and any leftover backup of an edited png, keeping the png. */
+    fun deleteOriginalCompanions(path: String) {
+        try {
+            val base = baseOfImage(path)
+            listOf(File(originalJpgPath(base)), File(origBackupPath(base))).forEach {
+                if (it.exists()) it.delete()
+            }
+        } catch (e: Exception) {
+            AppLogger.e("Fade", "deleteOriginalCompanions failed: $path", e)
         }
     }
 

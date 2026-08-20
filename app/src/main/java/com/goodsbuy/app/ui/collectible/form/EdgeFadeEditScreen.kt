@@ -22,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -29,9 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.util.FadeShape
 import kotlin.math.ceil
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,20 +58,22 @@ fun EdgeFadeEditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val preview by viewModel.previewBitmap.collectAsState()
-    var consumed by remember { mutableStateOf(false) }
+    val canReset by viewModel.canReset.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(sourcePath) { viewModel.initialize(sourcePath) }
-
-    LaunchedEffect(Unit) {
-        viewModel.done.collect { resultPath ->
-            if (!consumed) {
-                consumed = true
-                onDone(resultPath)
-            }
+    fun handleResult(result: String?) {
+        if (result != null) {
+            onDone(result)
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("处理失败，请重试") }
         }
     }
 
+    LaunchedEffect(sourcePath) { viewModel.initialize(sourcePath) }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("图片渐隐") },
@@ -80,7 +83,10 @@ fun EdgeFadeEditScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = viewModel::confirm, enabled = !uiState.isProcessing) {
+                    TextButton(
+                        onClick = { viewModel.confirm(::handleResult) },
+                        enabled = !uiState.isProcessing
+                    ) {
                         Text(if (uiState.isProcessing) "处理中…" else "确认")
                     }
                 }
@@ -137,8 +143,8 @@ fun EdgeFadeEditScreen(
                 )
             }
             OutlinedButton(
-                onClick = viewModel::reset,
-                enabled = !uiState.isProcessing && uiState.intensity > 0f,
+                onClick = { viewModel.reset(::handleResult) },
+                enabled = !uiState.isProcessing && uiState.intensity > 0f && canReset,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("恢复原图")

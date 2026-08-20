@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -84,9 +86,20 @@ var editingImageIndex by remember { mutableStateOf<Int?>(null) }
         contract = GalleryImagePickerContract(maxItems = 9)
     ) { uris -> viewModel.addImages(uris) }
 
+    val cameraContract = remember { CameraCaptureContract() }
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = CameraCaptureContract()
+        contract = cameraContract
     ) { uri -> if (uri != null) pendingCapturePath = uri.path }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            cameraLauncher.launch(Unit)
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("需要相机权限才能拍照") }
+        }
+    }
 
     LaunchedEffect(collectibleId) { viewModel.initialize(collectibleId) }
 
@@ -449,10 +462,15 @@ FilledTonalButton(
                             showImageSourceMenu = false
                             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
                             if (intent.resolveActivity(context.packageManager) != null) {
-                                try {
-                                    cameraLauncher.launch(Unit)
-                                } catch (_: Exception) {
-                                    scope.launch { snackbarHostState.showSnackbar("无法打开相机") }
+                                if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    try {
+                                        cameraLauncher.launch(Unit)
+                                    } catch (e: Exception) {
+                                        com.goodsbuy.app.util.AppLogger.e("Camera", "launch failed", e)
+                                        scope.launch { snackbarHostState.showSnackbar("无法打开相机") }
+                                    }
+                                } else {
+                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
                                 }
                             } else {
                                 scope.launch { snackbarHostState.showSnackbar("未找到相机应用") }

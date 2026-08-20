@@ -10,11 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,14 +28,16 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
     private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
     val previewBitmap: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
 
-    private val _done = MutableSharedFlow<String>()
-    val done: SharedFlow<String> = _done.asSharedFlow()
+    private val _canReset = MutableStateFlow(false)
+    val canReset: StateFlow<Boolean> = _canReset.asStateFlow()
 
     private var previewJob: Job? = null
 
     fun initialize(sourcePath: String) {
         if (_uiState.value.sourcePath == sourcePath) return
         _uiState.value = EdgeFadeEditUiState(sourcePath = sourcePath)
+        val base = ImageUtils.baseOfImage(sourcePath)
+        _canReset.value = File(ImageUtils.originalJpgPath(base)).exists() || File(ImageUtils.origBackupPath(base)).exists()
         schedulePreview()
     }
 
@@ -52,7 +51,7 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
         schedulePreview()
     }
 
-    fun confirm() {
+    fun confirm(onResult: (String?) -> Unit) {
         if (_uiState.value.isProcessing) return
         _uiState.update { it.copy(isProcessing = true) }
         viewModelScope.launch {
@@ -64,12 +63,13 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
                     ImageUtils.applyEdgeFade(s.sourcePath, s.shape, s.intensity)
                 }
             }
+            com.goodsbuy.app.util.AppLogger.i("Fade", "confirm result=${if (result != null) "ok:$result" else "NULL"}")
             _uiState.update { it.copy(isProcessing = false) }
-            result?.let { _done.tryEmit(it) }
+            onResult(result)
         }
     }
 
-    fun reset() {
+    fun reset(onResult: (String?) -> Unit) {
         if (_uiState.value.isProcessing) return
         _uiState.update { it.copy(isProcessing = true) }
         viewModelScope.launch {
@@ -77,7 +77,7 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
                 ImageUtils.resetEdgeFade(_uiState.value.sourcePath)
             }
             _uiState.update { it.copy(isProcessing = false, intensity = 0f) }
-            result?.let { _done.tryEmit(it) }
+            onResult(result)
             schedulePreview()
         }
     }
@@ -90,13 +90,7 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
             if (s.sourcePath.isEmpty()) return@launch
             _uiState.update { it.copy(isPreviewLoading = true) }
             val bitmap = withContext(Dispatchers.IO) {
-                val base = ImageUtils.baseOfImage(s.sourcePath)
-                val source = if (File(ImageUtils.origBackupPath(base)).exists()) {
-                    ImageUtils.origBackupPath(base)
-                } else {
-                    s.sourcePath
-                }
-                val src = ImageUtils.decodeDownscaled(source, PREVIEW_DIMENSION) ?: return@withContext null
+                val src = ImageUtils.decodeDownscaled(s.sourcePath, PREVIEW_DIMENSION) ?: return@withContext null
                 if (s.intensity <= 0f) {
                     src
                 } else {
@@ -113,7 +107,6 @@ class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
                 }
             }
             if (bitmap != null) {
-                _previewBitmap.value?.recycle()
                 _previewBitmap.value = bitmap
             }
             _uiState.update { it.copy(isPreviewLoading = false) }
