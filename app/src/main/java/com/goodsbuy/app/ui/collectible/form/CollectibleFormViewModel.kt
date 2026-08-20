@@ -96,8 +96,7 @@ class CollectibleFormViewModel @Inject constructor(
 
     fun discardDraft() {
         val draft = pendingDraft ?: return
-        val keepPaths = originalImagePaths.toSet()
-        draft.imagePaths.filterNot(keepPaths::contains).forEach { ImageUtils.deleteImageWithCompanions(context, it) }
+        ImageUtils.deleteUnreferencedImages(draft.imagePaths, originalImagePaths)
         initializedKey?.let(draftStore::delete)
         draftSaveJob?.cancel()
         hasUnsavedDraftChanges = false
@@ -165,7 +164,7 @@ class CollectibleFormViewModel @Inject constructor(
 
     fun removeImagePath(index: Int) {
         val path = _uiState.value.imagePaths.getOrNull(index) ?: return
-        if (path !in originalImagePaths) ImageUtils.deleteImageWithCompanions(context, path)
+        if (path !in originalImagePaths) ImageUtils.deleteImageWithCompanions(path)
         _uiState.update { state -> state.copy(imagePaths = state.imagePaths.filterIndexed { i, _ -> i != index }) }
         scheduleDraftSave()
     }
@@ -209,9 +208,9 @@ class CollectibleFormViewModel @Inject constructor(
                 originalImagePaths.forEach { origPath ->
                     if (state.imagePaths.contains(origPath)) return@forEach
                     if (ImageUtils.baseOfImage(origPath) in currentBases) {
-                        ImageUtils.deleteImage(context, origPath)
+                        ImageUtils.deleteImage(origPath)
                     } else {
-                        ImageUtils.deleteImageWithCompanions(context, origPath)
+                        ImageUtils.deleteImageWithCompanions(origPath)
                     }
                 }
                 draftSaveJob?.cancel()

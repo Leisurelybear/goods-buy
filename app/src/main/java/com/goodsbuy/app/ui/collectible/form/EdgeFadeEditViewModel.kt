@@ -1,6 +1,5 @@
 package com.goodsbuy.app.ui.collectible.form
 
-import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,7 +7,6 @@ import com.goodsbuy.app.util.EdgeFadeMask
 import com.goodsbuy.app.util.FadeShape
 import com.goodsbuy.app.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,9 +23,7 @@ import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
-class EdgeFadeEditViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
-) : ViewModel() {
+class EdgeFadeEditViewModel @Inject constructor() : ViewModel() {
 
     private val _uiState = MutableStateFlow(EdgeFadeEditUiState())
     val uiState: StateFlow<EdgeFadeEditUiState> = _uiState.asStateFlow()
@@ -63,16 +59,13 @@ class EdgeFadeEditViewModel @Inject constructor(
             val result = withContext(Dispatchers.IO) {
                 val s = _uiState.value
                 if (s.intensity <= 0f) {
-                    ImageUtils.resetEdgeFade(context, s.sourcePath)
+                    ImageUtils.resetEdgeFade(s.sourcePath)
                 } else {
-                    ImageUtils.applyEdgeFade(context, s.sourcePath, s.shape, s.intensity)
+                    ImageUtils.applyEdgeFade(s.sourcePath, s.shape, s.intensity)
                 }
             }
             _uiState.update { it.copy(isProcessing = false) }
-            result?.let {
-                _uiState.update { state -> state.copy(resultPath = it) }
-                _done.emit(it)
-            }
+            result?.let { _done.tryEmit(it) }
         }
     }
 
@@ -81,13 +74,10 @@ class EdgeFadeEditViewModel @Inject constructor(
         _uiState.update { it.copy(isProcessing = true) }
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                ImageUtils.resetEdgeFade(context, _uiState.value.sourcePath)
+                ImageUtils.resetEdgeFade(_uiState.value.sourcePath)
             }
             _uiState.update { it.copy(isProcessing = false, intensity = 0f) }
-            result?.let {
-                _uiState.update { state -> state.copy(resultPath = it) }
-                _done.emit(it)
-            }
+            result?.let { _done.tryEmit(it) }
             schedulePreview()
         }
     }

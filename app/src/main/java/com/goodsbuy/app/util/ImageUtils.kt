@@ -2,7 +2,7 @@ package com.goodsbuy.app.util
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
@@ -29,7 +29,7 @@ object ImageUtils {
         }
     }
 
-    fun deleteImage(context: Context, path: String) {
+    fun deleteImage(path: String) {
         try {
             val file = File(path)
             if (file.exists()) file.delete()
@@ -38,7 +38,7 @@ object ImageUtils {
         }
     }
 
-    fun deleteImageWithCompanions(context: Context, path: String) {
+    fun deleteImageWithCompanions(path: String) {
         try {
             val base = baseOfImage(path)
             listOf(File(path), File(origBackupPath(base)), File(transparentPngPath(base))).forEach {
@@ -60,25 +60,30 @@ object ImageUtils {
     fun transparentPngPath(base: String): String = "${base}_transparent.png"
     fun isEditedImage(path: String): Boolean = path.endsWith("_transparent.png")
 
+    fun sampleSizeFor(width: Int, height: Int, maxDimension: Int): Int {
+        if (width <= 0 || height <= 0 || maxDimension <= 0) return 1
+        var sample = 1
+        val maxEdge = maxOf(width, height)
+        while (maxEdge / sample > maxDimension) {
+            sample *= 2
+        }
+        return sample
+    }
+
     fun decodeDownscaled(path: String, maxDimension: Int): Bitmap? {
         return try {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(path, bounds)
-            var sample = 1
-            while (bounds.outWidth / (sample * 2) >= maxDimension &&
-                bounds.outHeight / (sample * 2) >= maxDimension
-            ) {
-                sample *= 2
+            val source = ImageDecoder.createSource(File(path))
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                val sample = sampleSizeFor(info.size.width, info.size.height, maxDimension)
+                if (sample > 1) decoder.setTargetSampleSize(sample)
             }
-            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-            BitmapFactory.decodeFile(path, opts)
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    fun applyEdgeFade(context: Context, displayPath: String, shape: FadeShape, intensity: Float): String? {
+    fun applyEdgeFade(displayPath: String, shape: FadeShape, intensity: Float): String? {
         return try {
             if (intensity <= 0f) return displayPath
             val base = baseOfImage(displayPath)
@@ -108,18 +113,47 @@ object ImageUtils {
         }
     }
 
-    fun resetEdgeFade(context: Context, displayPath: String): String? {
+    fun resetEdgeFade(displayPath: String): String? {
         return try {
             val base = baseOfImage(displayPath)
-            val png = File(transparentPngPath(base))
-            val orig = File(origBackupPath(base))
-            if (png.exists()) png.delete()
-            if (orig.exists()) orig.delete()
             val original = File(originalJpgPath(base))
-            if (original.exists()) original.absolutePath else displayPath
+            if (original.exists()) {
+                val png = File(transparentPngPath(base))
+                val orig = File(origBackupPath(base))
+                if (png.exists()) png.delete()
+                if (orig.exists()) orig.delete()
+                original.absolutePath
+            } else {
+                val orig = File(origBackupPath(base))
+                if (orig.exists()) {
+                    val png = File(transparentPngPath(base))
+                    if (png.exists()) png.delete()
+                    orig.absolutePath
+                } else {
+                    displayPath
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    fun deleteUnreferencedImages(paths: List<String>, persistedPaths: List<String>) {
+        try {
+            val persistedSet = persistedPaths.toSet()
+            val persistedBases = persistedPaths.map { baseOfImage(it) }.toSet()
+            paths.forEach { path ->
+                val base = baseOfImage(path)
+                if (base !in persistedBases) {
+                    deleteImageWithCompanions(originalJpgPath(base))
+                } else if (path !in persistedSet) {
+                    val files = listOf(File(path), File(transparentPngPath(base)), File(origBackupPath(base)))
+                    files.filterNot { it.absolutePath in persistedSet }.forEach { if (it.exists()) it.delete() }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

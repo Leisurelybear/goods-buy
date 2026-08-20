@@ -357,7 +357,7 @@ object BackupManager {
             Log.e(TAG, "Import failed", e)
             AppLogger.e("Import", "Failed: ${e.message}", e)
             try { File(context.cacheDir, "backup_import").deleteRecursively() } catch (_: Exception) {}
-            if (!databaseCommitted) createdImagePaths.forEach { ImageUtils.deleteImage(context, it) }
+            if (!databaseCommitted) createdImagePaths.forEach { ImageUtils.deleteImage(it) }
             Result.failure(e)
         }
     }

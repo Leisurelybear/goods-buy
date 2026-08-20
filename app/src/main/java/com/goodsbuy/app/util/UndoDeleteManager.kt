@@ -74,7 +74,7 @@ class UndoDeleteManager @Inject constructor(
     private suspend fun finalizePending() {
         expirationJob?.cancel()
         val pending = _pending.value ?: return
-        pending.collectibles.flatMap { it.imagePaths }.forEach { ImageUtils.deleteImageWithCompanions(context, it) }
+        pending.collectibles.flatMap { it.imagePaths }.forEach { ImageUtils.deleteImageWithCompanions(it) }
         _pending.value = null
     }
 

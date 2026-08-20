@@ -1,5 +1,6 @@
 package com.goodsbuy.app.ui.collectible.form
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -57,6 +58,8 @@ fun CollectibleFormScreen(
     )
 
     var editingImageIndex by remember { mutableStateOf<Int?>(null) }
+
+    BackHandler(enabled = editingImageIndex != null) { editingImageIndex = null }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = GalleryImagePickerContract(maxItems = 9)
