@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.BuildConfig
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
+import com.goodsbuy.app.ui.components.HeroHeader
+import com.goodsbuy.app.ui.components.ListRowItem
 import kotlinx.coroutines.launch
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
@@ -347,87 +349,61 @@ Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bo
                 }
             } else {
                 // Main profile screen
+                HeroHeader(
+                    title = "我的",
+                    subtitle = "谷的拜 · v${BuildConfig.VERSION_NAME}"
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable { showSettings = true },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("设置", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.graphicsLayer(rotationZ = 180f))
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        ListRowItem(
+                            title = "设置",
+                            subtitle = "外观、数据、日志等",
+                            trailing = {
+                                Icon(
+                                    Icons.Default.ArrowBack,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.graphicsLayer(rotationZ = 180f)
+                                )
+                            },
+                            onClick = { showSettings = true }
+                        )
                         HorizontalDivider()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable { showDrafts = true; viewModel.refreshDrafts() },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("草稿箱", style = MaterialTheme.typography.bodyLarge)
-                                Text("${drafts.size} 条未完成草稿", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
+                        ListRowItem(
+                            title = "草稿箱",
+                            subtitle = "${drafts.size} 条未完成草稿",
+                            onClick = { showDrafts = true; viewModel.refreshDrafts() }
+                        )
                         HorizontalDivider()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable {
+                        ListRowItem(
+                            title = "导出备份",
+                            subtitle = "导出所有藏品及图片",
+                            onClick = {
                                 val fileName = "谷的拜备份_${System.currentTimeMillis()}.zip"
                                 exportLauncher.launch(fileName)
-                            },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.CloudDownload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("导出备份", style = MaterialTheme.typography.bodyLarge)
-                                Text("导出所有藏品及图片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        }
+                        )
                         HorizontalDivider()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                importLauncher.launch("application/zip")
-                            },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.CloudUpload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("导入备份", style = MaterialTheme.typography.bodyLarge)
-                                Text("从ZIP文件恢复数据", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        HorizontalDivider()
-
+                        ListRowItem(
+                            title = "导入备份",
+                            subtitle = "从ZIP文件恢复数据",
+                            onClick = { importLauncher.launch("application/zip") }
+                        )
                         if (!prefs.galleryEntryHome) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().clickable { onNavigateToGallery() },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text("图鉴模式", style = MaterialTheme.typography.bodyLarge)
-                                    Text("按 IP/系列分类查看", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
                             HorizontalDivider()
+                            ListRowItem(
+                                title = "图鉴模式",
+                                subtitle = "按 IP/系列分类查看",
+                                onClick = { onNavigateToGallery() }
+                            )
                         }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, contentDescription = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("关于谷的拜", style = MaterialTheme.typography.bodyLarge)
-                                Text("v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
+                        HorizontalDivider()
+                        ListRowItem(
+                            title = "关于谷的拜",
+                            subtitle = "v${BuildConfig.VERSION_NAME}",
+                            onClick = {}
+                        )
                     }
                 }
             }
