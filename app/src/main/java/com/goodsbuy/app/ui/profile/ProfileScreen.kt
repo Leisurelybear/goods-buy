@@ -8,20 +8,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,6 +26,12 @@ import com.goodsbuy.app.BuildConfig
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.ListRowItem
+import com.goodsbuy.app.ui.components.SectionHeader
+import com.goodsbuy.app.ui.preferences.GridPreferences
+import com.goodsbuy.app.ui.theme.AppThemes
+import com.goodsbuy.app.util.AppLogger
+import android.content.Intent
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
@@ -358,13 +361,12 @@ Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bo
                     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                         ListRowItem(
                             title = "设置",
-                            subtitle = "外观、数据、日志等",
+                            subtitle = "外观 · 首页 · 图鉴 · 日志",
                             trailing = {
                                 Icon(
-                                    Icons.Default.ArrowBack,
+                                    Icons.Default.ChevronRight,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.graphicsLayer(rotationZ = 180f)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             onClick = { showSettings = true }
@@ -401,8 +403,7 @@ Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bo
                         HorizontalDivider()
                         ListRowItem(
                             title = "关于谷的拜",
-                            subtitle = "v${BuildConfig.VERSION_NAME}",
-                            onClick = {}
+                            subtitle = "v${BuildConfig.VERSION_NAME}"
                         )
                     }
                 }
