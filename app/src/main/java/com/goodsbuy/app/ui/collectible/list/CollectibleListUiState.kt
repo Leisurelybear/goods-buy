@@ -1,6 +1,7 @@
 package com.goodsbuy.app.ui.collectible.list
 
 import com.goodsbuy.app.domain.model.Collectible
+import com.goodsbuy.app.domain.model.DashboardSummary
 
 enum class SortField(val label: String) {
     CREATED_AT("创建时间"),
@@ -21,5 +22,6 @@ data class CollectibleListUiState(
     val isBatchMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
     val sortField: SortField = SortField.CREATED_AT,
-    val sortAscending: Boolean = false
+    val sortAscending: Boolean = false,
+    val summary: DashboardSummary = DashboardSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0)
 )

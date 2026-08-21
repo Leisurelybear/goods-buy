@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
+import com.goodsbuy.app.domain.model.DashboardSummary
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.domain.usecase.GetDashboardSummaryUseCase
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.ImageUtils
@@ -31,6 +33,7 @@ class CollectibleListViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     private val preferencesRepository: PreferencesRepository,
     private val undoDeleteManager: UndoDeleteManager,
+    private val getDashboardSummary: GetDashboardSummaryUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -54,13 +57,15 @@ class CollectibleListViewModel @Inject constructor(
                 else repository.getAllCollectibles()
                 flow.map { list -> sortList(list, sortField, asc) }
                     .map { list ->
+                        val summary: DashboardSummary = getDashboardSummary(list)
                         CollectibleListUiState(
                             collectibles = list,
                             isLoading = false,
                             searchQuery = query,
                             selectedStatusFilter = status,
                             sortField = sortField,
-                            sortAscending = asc
+                            sortAscending = asc,
+                            summary = summary
                         )
                     }
             },

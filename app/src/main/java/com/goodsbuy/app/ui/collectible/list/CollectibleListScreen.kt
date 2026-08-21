@@ -6,34 +6,41 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.ui.collectible.list.SortField
+import com.goodsbuy.app.ui.components.AppFAB
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
+import com.goodsbuy.app.ui.components.GradientCard
+import com.goodsbuy.app.ui.components.HeroHeader
+import com.goodsbuy.app.ui.components.SearchBar
+import com.goodsbuy.app.ui.components.StatNumber
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
 @OptIn(
@@ -58,7 +65,7 @@ fun CollectibleListScreen(
     var searchText by remember { mutableStateOf(TextFieldValue(uiState.searchQuery)) }
     LaunchedEffect(uiState.searchQuery) {
         if (searchText.text != uiState.searchQuery) {
-            searchText = TextFieldValue(uiState.searchQuery, selection = androidx.compose.ui.text.TextRange(uiState.searchQuery.length))
+            searchText = TextFieldValue(uiState.searchQuery, selection = TextRange(uiState.searchQuery.length))
         }
     }
 
@@ -161,57 +168,89 @@ fun CollectibleListScreen(
                     )
                 } else {
                     TopAppBar(
-                        title = {
-                            Column {
-                                Text("谷的拜")
-                                AnimatedContent(
-                                    targetState = uiState.collectibles.size,
-                                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                                    label = "count_badge"
-                                ) { count ->
-                                    Text(
-                                        "$count 件藏品",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        },
+                        title = { },
                         actions = {
                             if (prefs.galleryEntryHome) {
                                 IconButton(onClick = onNavigateToGallery) {
                                     Icon(Icons.Default.PhotoLibrary, contentDescription = "打开图鉴")
                                 }
                             }
-                            IconButton(onClick = { onNavigateToForm(null) }) {
-                                Icon(Icons.Default.Add, contentDescription = "添加")
-                            }
                         }
                     )
+                }
+            }
+        },
+        floatingActionButton = {
+            if (!uiState.isBatchMode) {
+                AppFAB(onClick = { onNavigateToForm(null) }) {
+                    Icon(Icons.Default.Add, contentDescription = "添加藏品", tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Search bar
-            OutlinedTextField(
+            HeroHeader(
+                title = "谷的拜",
+                subtitle = "共 ${uiState.summary.totalCount} 件 · 持有 ${uiState.summary.ownedCount} · 已出 ${uiState.summary.soldCount}"
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                GradientCard(modifier = Modifier.weight(1f)) {
+                    StatNumber(
+                        value = uiState.summary.totalCount.toString(),
+                        label = "藏品总数",
+                        valueColor = MaterialTheme.colorScheme.onPrimary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    )
+                }
+                GradientCard(modifier = Modifier.weight(1f)) {
+                    StatNumber(
+                        value = "¥${String.format("%,.0f", uiState.summary.totalInvestment)}",
+                        label = "总投入",
+                        valueColor = MaterialTheme.colorScheme.onPrimary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                GradientCard(modifier = Modifier.weight(1f)) {
+                    StatNumber(
+                        value = "¥${String.format("%,.0f", uiState.summary.totalRevenue)}",
+                        label = "总回收",
+                        valueColor = MaterialTheme.colorScheme.onPrimary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    )
+                }
+                GradientCard(modifier = Modifier.weight(1f)) {
+                    StatNumber(
+                        value = "${if (uiState.summary.totalProfitRate >= 0) "+" else ""}${String.format("%.1f", uiState.summary.totalProfitRate)}%",
+                        label = "总收益率",
+                        valueColor = MaterialTheme.colorScheme.onPrimary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it; viewModel.onSearchQueryChange(it.text) },
-                placeholder = { Text("搜索藏品名称、IP、角色…") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    AnimatedVisibility(
-                        visible = searchText.text.isNotEmpty(),
-                        enter = fadeIn(tween(150)),
-                        exit = fadeOut(tween(150))
-                    ) {
-                        IconButton(onClick = { searchText = TextFieldValue(""); viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "清除")
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                singleLine = true
+                placeholder = "搜索藏品名称、IP、角色…",
+                onClear = { searchText = TextFieldValue(""); viewModel.onSearchQueryChange("") },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             // Status filter chips
@@ -292,7 +331,8 @@ fun CollectibleListScreen(
             AnimatedContent(
                 targetState = uiState.collectibles.isEmpty() && !uiState.isLoading,
                 transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                label = "list_or_empty"
+                label = "list_or_empty",
+                modifier = Modifier.weight(1f)
             ) { showEmpty ->
                 if (showEmpty) {
                     EmptyState()
