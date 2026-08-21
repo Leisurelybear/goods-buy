@@ -229,7 +229,7 @@ FilledTonalButton(
                              AsyncImage(
                                  model = path,
                                  contentDescription = null,
-                                 modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                                 modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.small),
                                  contentScale = ContentScale.Crop
                              )
                              IconButton(

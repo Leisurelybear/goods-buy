@@ -316,6 +316,7 @@ private fun SettingsContent(
         HorizontalDivider()
         StepperRow(
             title = "卡片大小",
+            subtitle = "图鉴横向卡片宽度；藏品柜卡片随列数自适应",
             value = "${prefs.cardSize}dp",
             canDecrease = prefs.cardSize > 100,
             canIncrease = prefs.cardSize < 200,

@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
@@ -48,23 +49,25 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
         item {
             HeroHeader(
                 title = "统计",
-                subtitle = "${uiState.summary.totalCount} 件藏品"
-            ) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Column {
-                    Text("累计盈亏", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                    Text(
-                        text = buildString {
-                            if (uiState.summary.totalProfit >= 0) append("+")
-                            append("\u00a5")
-                            append(String.format("%.0f", uiState.summary.totalProfit))
-                        },
-                        style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                subtitle = "${uiState.summary.totalCount} 件藏品",
+                bottomContent = {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column {
+                        Text("累计盈亏", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+                        Text(
+                            text = buildString {
+                                if (uiState.summary.totalProfit >= 0) append("+")
+                                append("\u00a5")
+                                append(String.format("%.0f", uiState.summary.totalProfit))
+                            },
+                            style = MaterialTheme.typography.displaySmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
                 }
-            }
+            )
         }
 
         item {
@@ -160,17 +163,19 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 enter = expandVertically(tween(200)) + fadeIn(tween(200)),
                 exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
             ) {
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilterChip(
-                        selected = selectedStatus == null,
-                        onClick = { selectedStatus = null },
-                        label = { Text("全部") }
-                    )
-                    OrderStatus.entries.forEach { status ->
+                    item {
+                        FilterChip(
+                            selected = selectedStatus == null,
+                            onClick = { selectedStatus = null },
+                            label = { Text("全部") }
+                        )
+                    }
+                    items(OrderStatus.entries) { status ->
                         FilterChip(
                             selected = selectedStatus == status.name,
                             onClick = { selectedStatus = status.name },

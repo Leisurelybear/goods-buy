@@ -111,7 +111,7 @@ fun EdgeFadeEditScreen(
             }
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f)
-                    .clip(RoundedCornerShape(12.dp)).checkerboard(),
+                    .clip(MaterialTheme.shapes.small).checkerboard(),
                 contentAlignment = Alignment.Center
             ) {
                 preview?.let { bitmap ->

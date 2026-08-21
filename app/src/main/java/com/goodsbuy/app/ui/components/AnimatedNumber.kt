@@ -43,6 +43,7 @@ fun AnimatedNumber(
         text = text,
         style = style,
         color = color,
+        maxLines = 1,
         modifier = modifier
     )
 }

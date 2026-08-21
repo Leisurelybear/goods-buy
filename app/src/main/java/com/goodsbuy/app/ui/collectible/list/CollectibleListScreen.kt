@@ -7,14 +7,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -27,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -37,10 +39,7 @@ import com.goodsbuy.app.ui.collectible.list.SortField
 import com.goodsbuy.app.ui.components.AppFAB
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
-import com.goodsbuy.app.ui.components.GradientCard
-import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.SearchBar
-import com.goodsbuy.app.ui.components.StatNumber
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
 @OptIn(
@@ -168,7 +167,7 @@ fun CollectibleListScreen(
                     )
                 } else {
                     TopAppBar(
-                        title = { },
+                        title = { Text("谷的拜") },
                         actions = {
                             if (prefs.galleryEntryHome) {
                                 IconButton(onClick = onNavigateToGallery) {
@@ -189,136 +188,86 @@ fun CollectibleListScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            HeroHeader(
-                title = "谷的拜",
-                subtitle = "共 ${uiState.summary.totalCount} 件 · 持有 ${uiState.summary.ownedCount} · 已出 ${uiState.summary.soldCount}"
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GradientCard(modifier = Modifier.weight(1f)) {
-                    Column {
-                        Text("藏品总数", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalCount.toDouble(), prefix = "", color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-                GradientCard(modifier = Modifier.weight(1f)) {
-                    Column {
-                        Text("总投入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalInvestment, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GradientCard(modifier = Modifier.weight(1f)) {
-                    Column {
-                        Text("总回收", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalRevenue, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-                GradientCard(modifier = Modifier.weight(1f)) {
-                    Column {
-                        Text("总收益率", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalProfitRate, decimals = 1, prefix = "", suffix = "%", color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it; viewModel.onSearchQueryChange(it.text) },
                 placeholder = "搜索藏品名称、IP、角色…",
                 onClear = { searchText = TextFieldValue(""); viewModel.onSearchQueryChange("") },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
             )
 
-            // Status filter chips
+            // Compact toolbar: sort + status filter in one row
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                item {
-                    FilterChip(
-                        selected = uiState.selectedStatusFilter == null,
-                        onClick = { viewModel.onStatusFilterChange(null) },
-                        label = { Text("全部") }
-                    )
-                }
-                items(OrderStatus.entries) { status ->
-                    FilterChip(
-                        selected = uiState.selectedStatusFilter == status.name,
-                        onClick = { viewModel.onStatusFilterChange(status.name) },
-                        label = { Text(status.displayName) }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Sort control (can be hidden via settings to save space)
-            if (prefs.showSortControl) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box {
-                        OutlinedButton(onClick = { sortMenuExpanded = true }) {
-                            Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("排序: ${uiState.sortField.label}")
-                        }
-                        DropdownMenu(
-                            expanded = sortMenuExpanded,
-                            onDismissRequest = { sortMenuExpanded = false }
-                        ) {
-                            SortField.entries.forEach { field ->
-                                DropdownMenuItem(
-                                    text = { Text(field.label) },
-                                    onClick = {
-                                        viewModel.onSortFieldChange(field)
-                                        sortMenuExpanded = false
-                                    },
-                                    trailingIcon = if (uiState.sortField == field) {
-                                        { Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                    } else null
-                                )
+                if (prefs.showSortControl) {
+                    item {
+                        Box {
+                            CompactPill(
+                                label = uiState.sortField.label,
+                                selected = false,
+                                onClick = { sortMenuExpanded = true },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(12.dp))
+                                }
+                            )
+                            DropdownMenu(
+                                expanded = sortMenuExpanded,
+                                onDismissRequest = { sortMenuExpanded = false }
+                            ) {
+                                SortField.entries.forEach { field ->
+                                    DropdownMenuItem(
+                                        text = { Text(field.label) },
+                                        onClick = {
+                                            viewModel.onSortFieldChange(field)
+                                            sortMenuExpanded = false
+                                        },
+                                        trailingIcon = if (uiState.sortField == field) {
+                                            { Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                        } else null
+                                    )
+                                }
                             }
                         }
                     }
-                    IconButton(onClick = { viewModel.onSortDirectionToggle() }) {
-                        Icon(
-                            if (uiState.sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                            contentDescription = "切换升序/降序",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    AnimatedContent(
-                        targetState = uiState.sortAscending,
-                        transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
-                        label = "sort_dir"
-                    ) { ascending ->
-                        Text(
-                            if (ascending) "升序" else "降序",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    item {
+                        val directionDesc = !uiState.sortAscending
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { viewModel.onSortDirectionToggle() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (directionDesc) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                                contentDescription = "切换升序/降序",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                item {
+                    CompactPill(
+                        label = "全部",
+                        selected = uiState.selectedStatusFilter == null,
+                        onClick = { viewModel.onStatusFilterChange(null) }
+                    )
+                }
+                items(OrderStatus.entries) { status ->
+                    CompactPill(
+                        label = status.displayName,
+                        selected = uiState.selectedStatusFilter == status.name,
+                        onClick = { viewModel.onStatusFilterChange(status.name) }
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             AnimatedContent(
                 targetState = uiState.collectibles.isEmpty() && !uiState.isLoading,
@@ -340,7 +289,6 @@ fun CollectibleListScreen(
                             CollectibleCard(
                                 collectible = collectible,
                                 onClick = { onNavigateToDetail(collectible.id) },
-                                cardSize = prefs.cardSize.dp,
                                 showName = prefs.showName,
                                 showPrice = prefs.showPrice,
                                 showStatus = prefs.showStatus,
@@ -351,12 +299,43 @@ fun CollectibleListScreen(
                                 isSelected = uiState.selectedIds.contains(collectible.id),
                                 onSelect = { viewModel.toggleSelect(collectible.id) },
                                 batchMode = uiState.isBatchMode,
-                                modifier = Modifier.animateItemPlacement(tween(250))
+                                modifier = Modifier.fillMaxWidth().animateItemPlacement(tween(250))
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/** 紧凑筛选胶囊：比 FilterChip（32dp）更矮（约 24dp），为藏品网格省出空间。 */
+@Composable
+private fun CompactPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    leadingIcon: (@Composable () -> Unit)? = null
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            if (leadingIcon != null) {
+                leadingIcon()
+                Spacer(modifier = Modifier.width(3.dp))
+            }
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1
+            )
         }
     }
 }

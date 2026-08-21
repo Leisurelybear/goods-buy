@@ -68,7 +68,7 @@ fun LongPressMenu(
                 columns = GridCells.Fixed(3),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth().height(140.dp)
+                modifier = Modifier.fillMaxWidth().height(152.dp)
             ) {
                 items(OrderStatus.entries) { status ->
                     FilterChip(

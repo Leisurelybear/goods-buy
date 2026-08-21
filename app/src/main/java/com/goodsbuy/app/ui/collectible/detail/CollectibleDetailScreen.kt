@@ -42,6 +42,7 @@ import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.calculator.CollectibleAccounting
 import com.goodsbuy.app.ui.components.ProfitLossText
+import com.goodsbuy.app.util.formatPrice
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,7 +130,6 @@ if (collectible.imagePaths.isNotEmpty()) {
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -171,11 +171,11 @@ if (collectible.imagePaths.isNotEmpty()) {
                         Text("购入信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         DetailRow("购买渠道", collectible.purchaseChannel)
                         DetailRow("店铺/卖家", collectible.purchaseShop)
-                        DetailRow("入手单价", "\u00a5${collectible.purchasePrice}")
+                        DetailRow("入手单价", "¥${formatPrice(collectible.purchasePrice)}")
                         DetailRow("购入数量", "${collectible.purchaseQuantity}")
-                        DetailRow("购入运费", "\u00a5${collectible.purchaseShipping}")
-                        DetailRow("心理预期价", "\u00a5${collectible.expectedPrice}")
-                        DetailRow("总成本", "\u00a5${String.format("%.2f", CollectibleAccounting.purchaseTotal(collectible))}")
+                        DetailRow("购入运费", "¥${formatPrice(collectible.purchaseShipping)}")
+                        DetailRow("心理预期价", "¥${formatPrice(collectible.expectedPrice)}")
+                        DetailRow("总成本", "¥${formatPrice(CollectibleAccounting.purchaseTotal(collectible))}")
                     }
                 }
 
@@ -187,12 +187,12 @@ if (collectible.imagePaths.isNotEmpty()) {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("卖出信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            collectible.sellPrice?.let { DetailRow("售出单价", "\u00a5$it") }
+                            collectible.sellPrice?.let { DetailRow("售出单价", "¥${formatPrice(it)}") }
                             collectible.sellQuantity?.let { DetailRow("售出数量", "$it") }
                             if (collectible.isFreeShipping) {
                                 DetailRow("运费", "包邮（卖家承担）")
                             } else {
-                                collectible.sellShipping?.let { DetailRow("售出运费", "\u00a5$it") }
+                                collectible.sellShipping?.let { DetailRow("售出运费", "¥${formatPrice(it)}") }
                             }
                             collectible.sellDate?.let {
                                 val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
@@ -213,8 +213,8 @@ if (collectible.imagePaths.isNotEmpty()) {
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("盈亏情况", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                DetailRow("本次核算成本", "\u00a5${String.format("%.2f", uiState.profitLoss!!.totalCost)}")
-                                DetailRow("总营收", "\u00a5${uiState.profitLoss!!.totalRevenue}")
+                                DetailRow("本次核算成本", "¥${formatPrice(uiState.profitLoss!!.totalCost)}")
+                                DetailRow("总营收", "¥${formatPrice(uiState.profitLoss!!.totalRevenue)}")
                                 DetailRow("盈亏金额", "", profitLoss = uiState.profitLoss)
                                 DetailRow("盈亏比例", "${String.format("%.1f", uiState.profitLoss!!.profitRate)}%", profitLoss = uiState.profitLoss)
                             }
@@ -264,7 +264,7 @@ itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path 
                         modifier = Modifier
                             .width(96.dp)
                             .height(128.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(MaterialTheme.shapes.small),
                         contentScale = ContentScale.Fit
                     )
                     if (imagePaths.size > 1) {

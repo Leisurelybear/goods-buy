@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,12 +22,14 @@ fun HeroHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    action: @Composable (() -> Unit)? = null
+    action: @Composable (() -> Unit)? = null,
+    bottomContent: @Composable (() -> Unit)? = null
 ) {
     val gradient = LocalAppGradient.current
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
             .background(
                 Brush.verticalGradient(
                     listOf(gradient.start, gradient.end)
@@ -50,6 +53,9 @@ fun HeroHeader(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                 )
+            }
+            if (bottomContent != null) {
+                bottomContent()
             }
         }
         if (action != null) {

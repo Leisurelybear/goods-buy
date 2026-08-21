@@ -46,12 +46,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.ui.theme.LocalAppGradient
+import com.goodsbuy.app.util.formatPrice
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -60,7 +60,6 @@ fun CollectibleCard(
     collectible: Collectible,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    cardSize: Dp = 140.dp,
     showName: Boolean = true,
     showPrice: Boolean = true,
     showStatus: Boolean = true,
@@ -88,11 +87,10 @@ fun CollectibleCard(
     )
 
     val gradient = LocalAppGradient.current
-    val cardCorner = RoundedCornerShape(16.dp)
+    val cardCorner = MaterialTheme.shapes.medium
 
     Card(
         modifier = modifier
-            .width(cardSize)
             .aspectRatio(0.75f)
             .scale(scale)
             .clip(cardCorner)
@@ -135,7 +133,7 @@ fun CollectibleCard(
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
                 ) {
-                    StatusChip(collectible.status)
+                    StatusChip(collectible.status, onImage = true)
                 }
             }
 
@@ -143,7 +141,7 @@ fun CollectibleCard(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0x80000000).copy(alpha = 0.5f * selectionAlpha)),
+                        .background(Color.Black.copy(alpha = 0.5f * selectionAlpha)),
                     contentAlignment = Alignment.TopEnd
                 ) {
                     IconButton(
@@ -160,16 +158,17 @@ fun CollectibleCard(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .height(52.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.55f),
-                        RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-                    )
-            ) {
+            if (showName || showPrice || collectible.imagePaths.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(52.dp)
+                        .background(
+                            Color.Black.copy(alpha = 0.55f),
+                            RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+                        )
+                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -195,7 +194,7 @@ fun CollectibleCard(
                         if (showPrice) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "¥${collectible.purchasePrice}",
+                                text = "¥${formatPrice(collectible.purchasePrice)}",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = priceSize.sp),
                                 color = Color.White.copy(alpha = 0.9f),
                                 maxLines = 1
@@ -226,6 +225,7 @@ fun CollectibleCard(
                         Spacer(modifier = Modifier.height(2.dp))
                     }
                 }
+                }
             }
         }
     }
@@ -242,7 +242,7 @@ private fun CardImage(
         AsyncImage(
             model = imagePaths.first(),
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
             contentScale = ContentScale.Crop
         )
         return
@@ -266,7 +266,7 @@ private fun CardImage(
         AsyncImage(
             model = path,
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
             contentScale = ContentScale.Crop
         )
     }

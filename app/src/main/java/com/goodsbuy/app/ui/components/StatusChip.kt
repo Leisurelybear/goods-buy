@@ -21,8 +21,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.domain.model.OrderStatus
 
+/**
+ * 状态胶囊。[onImage] 为 true 时用于叠加在图片上：深色遮罩底 + 白字，
+ * 仅保留状态色圆点作标识，保证任意照片背景下的可读性。
+ */
 @Composable
-fun StatusChip(status: OrderStatus, modifier: Modifier = Modifier) {
+fun StatusChip(status: OrderStatus, modifier: Modifier = Modifier, onImage: Boolean = false) {
     val targetColor = Color(status.colorHex)
     val color by animateColorAsState(
         targetValue = targetColor,
@@ -30,8 +34,8 @@ fun StatusChip(status: OrderStatus, modifier: Modifier = Modifier) {
         label = "status_chip_color"
     )
     Surface(
-        color = color.copy(alpha = 0.15f),
-        contentColor = color,
+        color = if (onImage) Color.Black.copy(alpha = 0.55f) else color.copy(alpha = 0.15f),
+        contentColor = if (onImage) Color.White else color,
         shape = RoundedCornerShape(999.dp),
         modifier = modifier
     ) {

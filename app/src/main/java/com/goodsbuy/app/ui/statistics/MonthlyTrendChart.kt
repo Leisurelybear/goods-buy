@@ -87,7 +87,6 @@ fun MonthlyTrendChart(
                                 visibleStats.maxOf { max(it.expense, it.income) }
                             ).toFloat()
                             val chartHeight = size.height - 16.dp.toPx()
-                            val xStep = if (visibleStats.size == 1) 0f else size.width / (visibleStats.size - 1)
 
                             for (index in 1..3) {
                                 val y = chartHeight * index / 4f
@@ -99,8 +98,8 @@ fun MonthlyTrendChart(
                                 )
                             }
 
-                            drawSeries(visibleStats.map { it.expense.toFloat() }, expenseColor, maxValue, chartHeight, xStep, drawProgress.value)
-                            drawSeries(visibleStats.map { it.income.toFloat() }, incomeColor, maxValue, chartHeight, xStep, drawProgress.value)
+                            drawSeries(visibleStats.map { it.expense.toFloat() }, expenseColor, maxValue, chartHeight, drawProgress.value)
+                            drawSeries(visibleStats.map { it.income.toFloat() }, incomeColor, maxValue, chartHeight, drawProgress.value)
                         }
                         Row(modifier = Modifier.fillMaxWidth()) {
                             visibleStats.forEach { stat ->
@@ -139,16 +138,17 @@ private fun DrawScope.drawSeries(
     color: Color,
     maxValue: Float,
     chartHeight: Float,
-    xStep: Float,
     drawProgress: Float
 ) {
     if (values.isEmpty()) return
     val visibleCount = max(1, (values.size * drawProgress).toInt())
     val path = Path()
+    val slotWidth = size.width / values.size
 
     values.forEachIndexed { index, value ->
         if (index >= visibleCount) return@forEachIndexed
-        val x = if (values.size == 1) size.width / 2f else index * xStep
+        // 数据点落在等分槽位中心，与下方 weight(1f) 的月份标签对齐
+        val x = slotWidth * (index + 0.5f)
         val y = chartHeight - (value / maxValue).coerceIn(0f, 1f) * chartHeight
         if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         // Only draw circles for fully visible points

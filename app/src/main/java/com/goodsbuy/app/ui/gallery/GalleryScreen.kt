@@ -190,7 +190,6 @@ fun GalleryScreen(
                         CollectibleCard(
                             collectible = collectible,
                             onClick = { onNavigateToDetail(collectible.id) },
-                            cardSize = prefs.cardSize.dp,
                             showName = prefs.showName,
                             showPrice = prefs.showPrice,
                             showStatus = prefs.showStatus,
@@ -199,7 +198,7 @@ fun GalleryScreen(
                             isSelected = false,
                             onSelect = null,
                             batchMode = false,
-                            modifier = Modifier.animateItemPlacement(tween(250))
+                            modifier = Modifier.fillMaxWidth().animateItemPlacement(tween(250))
                         )
                     }
                 }
@@ -210,7 +209,7 @@ fun GalleryScreen(
                     onValueChange = { searchText = it; viewModel.setSearchQuery(it.text) },
                     placeholder = "搜索 IP/系列…",
                     onClear = { viewModel.setSearchQuery("") },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
                 )
 
                 // Group by filter
@@ -273,7 +272,6 @@ fun GalleryScreen(
                                             CollectibleCard(
                                                 collectible = collectible,
                                                 onClick = { onNavigateToDetail(collectible.id) },
-                                                cardSize = prefs.cardSize.dp,
                                                 showName = prefs.showName,
                                                 showPrice = prefs.showPrice,
                                                 showStatus = prefs.showStatus,
@@ -281,7 +279,8 @@ fun GalleryScreen(
                                                 onLongPress = { menuState = LongPressMenuState(collectible) },
                                                 isSelected = false,
                                                 onSelect = null,
-                                                batchMode = false
+                                                batchMode = false,
+                                                modifier = Modifier.width(prefs.cardSize.dp)
                                             )
                                         }
                                     }
@@ -313,7 +312,7 @@ private fun GalleryGroupHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 4.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant,
         onClick = onOpen
     ) {

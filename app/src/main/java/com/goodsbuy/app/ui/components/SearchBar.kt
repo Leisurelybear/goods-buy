@@ -39,25 +39,25 @@ fun SearchBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             Icons.Default.Search,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(18.dp)
         )
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface
             ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -68,7 +68,7 @@ fun SearchBar(
                     if (value.text.isEmpty()) {
                         Text(
                             placeholder,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
