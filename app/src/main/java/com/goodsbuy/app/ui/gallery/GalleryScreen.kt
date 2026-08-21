@@ -47,7 +47,7 @@ import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
 import com.goodsbuy.app.ui.components.SearchBar
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
-import com.goodsbuy.app.ui.theme.LocalAppTheme
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -307,7 +307,7 @@ private fun GalleryGroupHeader(
         animationSpec = tween(220),
         label = "chevron_rotation"
     )
-    val theme = LocalAppTheme.current
+    val gradient = LocalAppGradient.current
 
     Surface(
         modifier = Modifier
@@ -326,7 +326,7 @@ private fun GalleryGroupHeader(
                     .width(4.dp)
                     .height(36.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Brush.verticalGradient(listOf(theme.brandGradient.start, theme.brandGradient.end)))
+                    .background(Brush.verticalGradient(listOf(gradient.start, gradient.end)))
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

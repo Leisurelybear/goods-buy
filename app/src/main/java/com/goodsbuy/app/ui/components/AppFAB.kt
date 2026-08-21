@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
-import com.goodsbuy.app.ui.theme.LocalAppTheme
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 
 @Composable
 fun AppFAB(
@@ -21,7 +21,7 @@ fun AppFAB(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val theme = LocalAppTheme.current
+    val gradient = LocalAppGradient.current
     FloatingActionButton(
         onClick = onClick,
         modifier = modifier.size(56.dp),
@@ -34,7 +34,7 @@ fun AppFAB(
                 Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(theme.brandGradient.start, theme.brandGradient.end))),
+                    .background(Brush.linearGradient(listOf(gradient.start, gradient.end))),
                 contentAlignment = Alignment.Center
             ) {
                 content()

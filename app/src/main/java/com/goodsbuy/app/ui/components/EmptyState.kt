@@ -31,7 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.dp
-import com.goodsbuy.app.ui.theme.LocalAppTheme
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 
 @Composable
 fun EmptyState(modifier: Modifier = Modifier, message: String = "还没有藏品，点击 + 添加") {
@@ -49,7 +49,7 @@ fun EmptyState(modifier: Modifier = Modifier, message: String = "还没有藏品
         label = "empty_offset"
     )
 
-    val theme = LocalAppTheme.current
+    val gradient = LocalAppGradient.current
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -63,7 +63,7 @@ fun EmptyState(modifier: Modifier = Modifier, message: String = "还没有藏品
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(theme.brandGradient.start, theme.brandGradient.end))),
+                .background(Brush.radialGradient(listOf(gradient.start, gradient.end))),
             contentAlignment = Alignment.Center
         ) {
             Icon(

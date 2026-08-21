@@ -28,6 +28,7 @@ val DreamyPurpleTheme = ThemeConfig(
     label = "梦幻粉紫",
     lightColors = lightColorScheme(
         primary = Color(0xFFC77DFF),
+        onPrimary = Color(0xFF3D1F63),
         secondary = Color(0xFFFF8FAB),
         tertiary = Color(0xFFFFB3D9),
         background = Color(0xFFFFF0F5),
@@ -42,6 +43,7 @@ val DreamyPurpleTheme = ThemeConfig(
     ).copy(surfaceContainer = Color(0xFFFBEAF2), surfaceContainerHigh = Color(0xFFF6E2EE)),
     darkColors = darkColorScheme(
         primary = Color(0xFFB388FF),
+        onPrimary = Color(0xFFFFFFFF),
         secondary = Color(0xFFFF9EBB),
         tertiary = Color(0xFFFFB3D9),
         background = Color(0xFF1F1730),
@@ -55,7 +57,7 @@ val DreamyPurpleTheme = ThemeConfig(
         onSecondaryContainer = Color(0xFFFFDDE8)
     ).copy(surfaceContainer = Color(0xFF2E2342), surfaceContainerHigh = Color(0xFF362A4C)),
     brandGradient = AppGradient(Color(0xFFFF9EBB), Color(0xFFB388FF)),
-    darkBrandGradient = AppGradient(Color(0xFF6A3E9C), Color(0xFFB388FF))
+    darkBrandGradient = AppGradient(Color(0xFF5E2F8F), Color(0xFF8E63D6))
 )
 
 /** 主题注册表：所有可用主题。未来在「我的 → 显示设置」加选择器后由此遍历。 */
@@ -67,3 +69,10 @@ object AppThemes {
 
 /** CompositionLocal：全局读取当前主题（品牌渐变、id、label）。 */
 val LocalAppTheme = staticCompositionLocalOf { DreamyPurpleTheme }
+
+/**
+ * 当前激活的品牌渐变（按浅/深模式自动解析）。品牌表面（Hero、渐变卡片、FAB、角标等）
+ * 统一读取本 Local，深色模式自动切换为 [ThemeConfig.darkBrandGradient]（暗夜紫渐变），
+ * 确保渐变上的文字/图标对比度达标且深色风格统一。
+ */
+val LocalAppGradient = staticCompositionLocalOf { DreamyPurpleTheme.brandGradient }

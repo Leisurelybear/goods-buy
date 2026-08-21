@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.goodsbuy.app.ui.theme.LocalAppTheme
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 
 @Composable
 fun HeroHeader(
@@ -23,13 +23,13 @@ fun HeroHeader(
     modifier: Modifier = Modifier,
     action: @Composable (() -> Unit)? = null
 ) {
-    val theme = LocalAppTheme.current
+    val gradient = LocalAppGradient.current
     Box(
         modifier = modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    listOf(theme.brandGradient.start, theme.brandGradient.end)
+                    listOf(gradient.start, gradient.end)
                 )
             )
             .padding(horizontal = 24.dp, vertical = 36.dp)

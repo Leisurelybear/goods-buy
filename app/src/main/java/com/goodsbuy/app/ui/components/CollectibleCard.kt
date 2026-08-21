@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
-import com.goodsbuy.app.ui.theme.LocalAppTheme
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -87,7 +87,7 @@ fun CollectibleCard(
         label = "card_selection"
     )
 
-    val theme = LocalAppTheme.current
+    val gradient = LocalAppGradient.current
     val cardCorner = RoundedCornerShape(16.dp)
 
     Card(
@@ -208,7 +208,7 @@ fun CollectibleCard(
                                 modifier = Modifier
                                     .background(
                                         Brush.linearGradient(
-                                            listOf(theme.brandGradient.start, theme.brandGradient.end)
+                                            listOf(gradient.start, gradient.end)
                                         ),
                                         RoundedCornerShape(999.dp)
                                     )

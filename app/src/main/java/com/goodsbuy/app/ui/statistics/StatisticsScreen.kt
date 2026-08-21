@@ -16,8 +16,6 @@ import com.goodsbuy.app.ui.components.GradientCard
 import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.ProfitLossText
 import com.goodsbuy.app.ui.components.StatNumber
-import com.goodsbuy.app.ui.theme.LossRed
-import com.goodsbuy.app.ui.theme.ProfitGreen
 
 @Composable
 fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
@@ -65,7 +63,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     StatNumber(
                         value = "${if (uiState.summary.totalProfit >= 0) "+" else ""}¥${String.format("%,.0f", uiState.summary.totalProfit)}",
                         label = "累计盈亏",
-                        valueColor = if (uiState.summary.totalProfit >= 0) ProfitGreen else LossRed,
+                        valueColor = MaterialTheme.colorScheme.onPrimary,
                         labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                     )
                 }

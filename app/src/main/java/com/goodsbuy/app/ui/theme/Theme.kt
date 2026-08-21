@@ -12,7 +12,11 @@ fun GoodsBuyTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) theme.darkColors else theme.lightColors
-    CompositionLocalProvider(LocalAppTheme provides theme) {
+    val activeGradient = if (darkTheme) theme.darkBrandGradient else theme.brandGradient
+    CompositionLocalProvider(
+        LocalAppTheme provides theme,
+        LocalAppGradient provides activeGradient
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

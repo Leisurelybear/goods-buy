@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 import com.goodsbuy.app.ui.theme.LocalAppTheme
 
 @Composable
@@ -21,7 +22,7 @@ fun GradientCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val theme = LocalAppTheme.current
-    val gradient = if (useDarkGradient) theme.darkBrandGradient else theme.brandGradient
+    val gradient = if (useDarkGradient) theme.darkBrandGradient else LocalAppGradient.current
     Box(
         modifier
             .fillMaxWidth()
