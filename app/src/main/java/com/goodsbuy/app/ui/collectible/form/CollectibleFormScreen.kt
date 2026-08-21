@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
+import com.goodsbuy.app.ui.components.SectionHeader
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -145,17 +146,30 @@ var editingImageIndex by remember { mutableStateOf<Int?>(null) }
                         Spacer(modifier = Modifier.width(3.dp))
                         Text("已保存", style = MaterialTheme.typography.labelSmall)
                     }
-                    IconButton(
+                    Button(
                         onClick = viewModel::save,
-                        enabled = !uiState.isSaving && !uiState.isSaved
+                        enabled = !uiState.isSaving && !uiState.isSaved,
+                        shape = RoundedCornerShape(28.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         if (uiState.isSaving) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                         } else {
                             Icon(
                                 if (uiState.isSaved) Icons.Default.Check else Icons.Default.Save,
-                                contentDescription = "保存"
+                                contentDescription = "保存",
+                                modifier = Modifier.size(18.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("保存", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
@@ -186,7 +200,7 @@ var editingImageIndex by remember { mutableStateOf<Int?>(null) }
                  verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
              ) {
                  Column {
-                     Text("藏品图片", style = MaterialTheme.typography.titleMedium)
+                      SectionHeader(title = "藏品图片")
                      Text(
                          "已选择 ${uiState.imagePaths.size}/9 张",
                          style = MaterialTheme.typography.bodySmall,
@@ -229,7 +243,7 @@ FilledTonalButton(
                  }
              }
 
-             Text("基础信息", style = MaterialTheme.typography.titleMedium)
+              SectionHeader(title = "基础信息")
              OutlinedTextField(
                  value = uiState.name,
                  onValueChange = { viewModel.updateField("name", it) },
@@ -341,7 +355,7 @@ FilledTonalButton(
                  exit = shrinkVertically(tween(250)) + fadeOut(tween(250))
              ) {
                  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                     Text("卖出信息", style = MaterialTheme.typography.titleMedium)
+                      SectionHeader(title = "卖出信息")
                      NumTextField(
                          value = uiState.sellPrice,
                          onValueChange = { viewModel.updateField("sellPrice", it) },
@@ -397,7 +411,7 @@ FilledTonalButton(
                  }
              }
 
-            Text("状态", style = MaterialTheme.typography.titleMedium)
+             SectionHeader(title = "状态")
             var statusExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = statusExpanded, onExpandedChange = { statusExpanded = it }) {
                 OutlinedTextField(value = uiState.status.displayName, onValueChange = {}, readOnly = true, label = { Text("订单状态") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
