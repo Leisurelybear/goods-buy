@@ -33,9 +33,14 @@ fun AnimatedNumber(
         label = "animated_number"
     )
 
-    val formatStr = "%.${decimals}f"
+    val formatStr = "%,.${decimals}f"
+    val text = if (animatedValue < 0) {
+        "-$prefix${String.format(formatStr, -animatedValue)}$suffix"
+    } else {
+        "$prefix${String.format(formatStr, animatedValue)}$suffix"
+    }
     Text(
-        text = "$prefix${String.format(formatStr, animatedValue)}$suffix",
+        text = text,
         style = style,
         color = color,
         modifier = modifier
@@ -60,8 +65,14 @@ fun AnimatedInt(
         label = "animated_int"
     )
 
+    val v = animatedValue.toInt()
+    val text = if (v < 0) {
+        "-$prefix${String.format("%,d", -v)}$suffix"
+    } else {
+        "$prefix${String.format("%,d", v)}$suffix"
+    }
     Text(
-        text = "$prefix${animatedValue.toInt()}$suffix",
+        text = text,
         style = style,
         color = color,
         modifier = modifier

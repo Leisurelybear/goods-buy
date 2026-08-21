@@ -204,7 +204,7 @@ fun CollectibleListScreen(
                 GradientCard(modifier = Modifier.weight(1f)) {
                     Column {
                         Text("藏品总数", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalCount.toDouble(), color = MaterialTheme.colorScheme.onPrimary)
+                        StatNumber(value = uiState.summary.totalCount.toDouble(), prefix = "", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
                 GradientCard(modifier = Modifier.weight(1f)) {
@@ -230,7 +230,7 @@ fun CollectibleListScreen(
                 GradientCard(modifier = Modifier.weight(1f)) {
                     Column {
                         Text("总收益率", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        StatNumber(value = uiState.summary.totalProfitRate, decimals = 1, suffix = "%", color = MaterialTheme.colorScheme.onPrimary)
+                        StatNumber(value = uiState.summary.totalProfitRate, decimals = 1, prefix = "", suffix = "%", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }

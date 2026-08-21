@@ -59,6 +59,7 @@ fun MainScreen(preferencesRepository: PreferencesRepository) {
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
