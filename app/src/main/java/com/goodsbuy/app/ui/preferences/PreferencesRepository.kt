@@ -22,7 +22,9 @@ data class GridPreferences(
     /** Number of seconds each image remains visible before advancing. */
     val homeImageRotationIntervalSeconds: Int = 3,
     /** Debounce interval used before persisting an edited collectible draft. */
-    val draftAutoSaveDelayMillis: Long = 500L
+    val draftAutoSaveDelayMillis: Long = 500L,
+    /** Active theme id; resolved via AppThemes.byId (reserved for future theme picker). */
+    val themeId: String = "dreamy_purple"
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -44,7 +46,8 @@ class PreferencesRepository(private val context: Context) {
             galleryEntryHome = prefs.getBoolean(PREF_GALLERY_ENTRY_HOME, false),
             homeImageAutoRotate = prefs.getBoolean(PREF_HOME_IMAGE_AUTO_ROTATE, false),
             homeImageRotationIntervalSeconds = prefs.getInt(PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS, 3).coerceIn(1, 60),
-            draftAutoSaveDelayMillis = normalizeDraftAutoSaveDelay(prefs.getLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, 500L))
+            draftAutoSaveDelayMillis = normalizeDraftAutoSaveDelay(prefs.getLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, 500L)),
+            themeId = themeId
         )
     )
 
@@ -64,6 +67,8 @@ class PreferencesRepository(private val context: Context) {
         get() = prefs.getInt(PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS, 3).coerceIn(1, 60)
     val draftAutoSaveDelayMillis: Long
         get() = normalizeDraftAutoSaveDelay(prefs.getLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, 500L))
+    val themeId: String
+        get() = prefs.getString(PREF_THEME_ID, "dreamy_purple") ?: "dreamy_purple"
 
     val preferencesState: State<GridPreferences> get() = _state
 
@@ -91,6 +96,7 @@ class PreferencesRepository(private val context: Context) {
                 normalizedPrefs.homeImageRotationIntervalSeconds
             )
             putLong(PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS, normalizedPrefs.draftAutoSaveDelayMillis)
+            putString(PREF_THEME_ID, normalizedPrefs.themeId)
             apply()
         }
     }
@@ -110,6 +116,7 @@ class PreferencesRepository(private val context: Context) {
         private const val PREF_HOME_IMAGE_AUTO_ROTATE = "home_image_auto_rotate"
         private const val PREF_HOME_IMAGE_ROTATION_INTERVAL_SECONDS = "home_image_rotation_interval_seconds"
         private const val PREF_DRAFT_AUTO_SAVE_DELAY_MILLIS = "draft_auto_save_delay_millis"
+        private const val PREF_THEME_ID = "theme_id"
         val DRAFT_AUTO_SAVE_DELAY_OPTIONS = listOf(500L, 1_000L, 2_000L)
 
         private fun normalizeDraftAutoSaveDelay(value: Long): Long =

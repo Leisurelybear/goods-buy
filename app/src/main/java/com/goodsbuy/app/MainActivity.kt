@@ -20,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.goodsbuy.app.ui.navigation.NavGraph
 import com.goodsbuy.app.ui.navigation.Screen
+import com.goodsbuy.app.ui.theme.AppThemes
 import com.goodsbuy.app.ui.theme.GoodsBuyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
@@ -33,7 +34,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            GoodsBuyTheme {
+            val themeId = preferencesRepository.preferencesState.value.themeId
+            GoodsBuyTheme(theme = AppThemes.byId(themeId)) {
                 MainScreen(preferencesRepository)
             }
         }
