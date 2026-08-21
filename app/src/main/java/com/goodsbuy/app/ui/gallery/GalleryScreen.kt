@@ -11,8 +11,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -29,9 +31,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.goodsbuy.app.domain.model.Collectible
@@ -39,7 +45,9 @@ import com.goodsbuy.app.ui.collectible.list.LongPressMenu
 import com.goodsbuy.app.ui.collectible.list.LongPressMenuState
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
+import com.goodsbuy.app.ui.components.SearchBar
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
+import com.goodsbuy.app.ui.theme.LocalAppTheme
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -62,6 +70,13 @@ fun GalleryScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Collectible?>(null) }
     var selectedGroupName by remember { mutableStateOf<String?>(null) }
+
+    var searchText by remember { mutableStateOf(TextFieldValue(uiState.searchQuery)) }
+    LaunchedEffect(uiState.searchQuery) {
+        if (searchText.text != uiState.searchQuery) {
+            searchText = TextFieldValue(uiState.searchQuery, selection = TextRange(uiState.searchQuery.length))
+        }
+    }
 
     LaunchedEffect(pendingDeletion?.token) {
         val pending = pendingDeletion ?: return@LaunchedEffect
@@ -190,24 +205,12 @@ fun GalleryScreen(
                 }
             } else {
                 // Search bar
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = viewModel::setSearchQuery,
-                    placeholder = { Text("搜索 IP/系列…") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = uiState.searchQuery.isNotEmpty(),
-                            enter = fadeIn(tween(150)),
-                            exit = fadeOut(tween(150))
-                        ) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "清除")
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    singleLine = true
+                SearchBar(
+                    value = searchText,
+                    onValueChange = { searchText = it; viewModel.setSearchQuery(it.text) },
+                    placeholder = "搜索 IP/系列…",
+                    onClear = { viewModel.setSearchQuery("") },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
                 // Group by filter
@@ -304,34 +307,51 @@ private fun GalleryGroupHeader(
         animationSpec = tween(220),
         label = "chevron_rotation"
     )
+    val theme = LocalAppTheme.current
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        onClick = onOpen
     ) {
-        IconButton(onClick = onToggleCollapse) {
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = if (collapsed) "展开" else "折叠",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.rotate(chevronRotation)
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f).clickable(onClick = onOpen, role = Role.Button)
-                .padding(vertical = 8.dp),
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = group.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(
-                text = "${group.count} 件",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(theme.brandGradient.start, theme.brandGradient.end)))
             )
-        }
-        IconButton(onClick = onOpen) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "查看本组")
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${group.count} 件",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onToggleCollapse) {
+                Icon(
+                    imageVector = Icons.Default.ExpandMore,
+                    contentDescription = if (collapsed) "展开" else "折叠",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.rotate(chevronRotation)
+                )
+            }
+            IconButton(onClick = onOpen) {
+                Icon(Icons.Default.ChevronRight, contentDescription = "查看本组")
+            }
         }
     }
 }
