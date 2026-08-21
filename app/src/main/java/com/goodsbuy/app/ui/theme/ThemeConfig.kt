@@ -60,7 +60,7 @@ val DreamyPurpleTheme = ThemeConfig(
     darkBrandGradient = AppGradient(Color(0xFF5E2F8F), Color(0xFF8E63D6))
 )
 
-/** 主题注册表：所有可用主题。未来在「我的 → 显示设置」加选择器后由此遍历。 */
+/** 主题注册表：所有可用主题。在「我的 → 设置 → 外观 → 主题」选择器中遍历。 */
 object AppThemes {
     val all: List<ThemeConfig> = listOf(DreamyPurpleTheme)
 

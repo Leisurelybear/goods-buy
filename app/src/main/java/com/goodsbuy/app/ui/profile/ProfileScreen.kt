@@ -247,14 +247,13 @@ private fun SettingSwitchRow(
     label: String,
     checked: Boolean,
     subtitle: String? = null,
-    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListRowItem(
         title = label,
         subtitle = subtitle,
         trailing = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     )
 }
@@ -320,25 +319,25 @@ private fun SettingsContent(
             value = "${prefs.cardSize}dp",
             canDecrease = prefs.cardSize > 100,
             canIncrease = prefs.cardSize < 200,
-            onDecrease = { onPrefsChange(prefs.copy(cardSize = prefs.cardSize - 20)) },
-            onIncrease = { onPrefsChange(prefs.copy(cardSize = prefs.cardSize + 20)) }
+            onDecrease = { onPrefsChange(prefs.copy(cardSize = (prefs.cardSize - 20).coerceAtLeast(100))) },
+            onIncrease = { onPrefsChange(prefs.copy(cardSize = (prefs.cardSize + 20).coerceAtMost(200))) }
         )
         HorizontalDivider()
-        ListRowItem(
-            title = "字体大小",
-            trailing = {
-                Row {
-                    listOf("小", "中", "大").forEachIndexed { idx, label ->
-                        FilterChip(
-                            selected = prefs.fontSize == idx,
-                            onClick = { onPrefsChange(prefs.copy(fontSize = idx)) },
-                            label = { Text(label) },
-                            modifier = Modifier.padding(horizontal = 2.dp)
-                        )
-                    }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("字体大小", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("小", "中", "大").forEachIndexed { idx, label ->
+                    FilterChip(
+                        selected = prefs.fontSize == idx,
+                        onClick = { onPrefsChange(prefs.copy(fontSize = idx)) },
+                        label = { Text(label) }
+                    )
                 }
             }
-        )
+        }
         HorizontalDivider()
         SettingSwitchRow("显示名称", prefs.showName) { onPrefsChange(prefs.copy(showName = it)) }
         HorizontalDivider()

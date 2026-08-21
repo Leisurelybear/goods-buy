@@ -23,7 +23,7 @@ data class GridPreferences(
     val homeImageRotationIntervalSeconds: Int = 3,
     /** Debounce interval used before persisting an edited collectible draft. */
     val draftAutoSaveDelayMillis: Long = 500L,
-    /** Active theme id; resolved via AppThemes.byId (reserved for future theme picker). */
+    /** 主题 id，经 [com.goodsbuy.app.ui.theme.AppThemes.byId] 解析；设置页「外观 → 主题」可选。 */
     val themeId: String = "dreamy_purple"
 )
 
