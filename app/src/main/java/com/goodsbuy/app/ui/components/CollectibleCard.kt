@@ -1,7 +1,6 @@
 package com.goodsbuy.app.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,15 +8,32 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -25,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.Collectible
+import com.goodsbuy.app.ui.theme.LocalAppTheme
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -56,7 +74,6 @@ fun CollectibleCard(
 ) {
     val nameSize = when (fontSize) { 0 -> 11f; 1 -> 12f; else -> 14f }
     val priceSize = when (fontSize) { 0 -> 9f; 1 -> 10f; else -> 12f }
-    val statusSize = when (fontSize) { 0 -> 9f; 1 -> 10f; else -> 11f }
 
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
@@ -70,18 +87,15 @@ fun CollectibleCard(
         label = "card_selection"
     )
 
-    val statusColor by animateColorAsState(
-        targetValue = Color(collectible.status.colorHex),
-        animationSpec = colorAnimSpec,
-        label = "card_status_color"
-    )
+    val theme = LocalAppTheme.current
+    val cardCorner = RoundedCornerShape(16.dp)
 
     Card(
         modifier = modifier
             .width(cardSize)
             .aspectRatio(0.75f)
             .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(cardCorner)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(
                 onClick = { if (batchMode) onSelect?.invoke() else onClick() },
@@ -91,7 +105,8 @@ fun CollectibleCard(
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (isSelected) 6.dp else 2.dp,
             pressedElevation = 4.dp
-        )
+        ),
+        shape = cardCorner
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (collectible.imagePaths.isNotEmpty()) {
@@ -118,16 +133,9 @@ fun CollectibleCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .background(statusColor.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .padding(6.dp)
                 ) {
-                    Text(
-                        text = collectible.status.displayName,
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = statusSize.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                    StatusChip(collectible.status)
                 }
             }
 
@@ -159,7 +167,7 @@ fun CollectibleCard(
                     .height(52.dp)
                     .background(
                         Color.Black.copy(alpha = 0.55f),
-                        RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+                        RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
                     )
             ) {
                 Column(
@@ -187,7 +195,7 @@ fun CollectibleCard(
                         if (showPrice) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "\u00a5${collectible.purchasePrice}",
+                                text = "¥${collectible.purchasePrice}",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = priceSize.sp),
                                 color = Color.White.copy(alpha = 0.9f),
                                 maxLines = 1
@@ -196,11 +204,21 @@ fun CollectibleCard(
                     }
                     if (collectible.imagePaths.size > 1) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(theme.brandGradient.start, theme.brandGradient.end)
+                                        ),
+                                        RoundedCornerShape(999.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                            ) {
                                 Text(
                                     "+${collectible.imagePaths.size - 1}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -221,11 +239,10 @@ private fun CardImage(
 ) {
     val imagePaths = collectible.imagePaths
     if (!autoRotate || imagePaths.size <= 1) {
-        // Avoid an animation node and a coroutine for the common, static-card case.
         AsyncImage(
             model = imagePaths.first(),
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
             contentScale = ContentScale.Crop
         )
         return
@@ -249,7 +266,7 @@ private fun CardImage(
         AsyncImage(
             model = path,
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
             contentScale = ContentScale.Crop
         )
     }
