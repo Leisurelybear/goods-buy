@@ -28,3 +28,7 @@ build.log
 
 # Brainstorm companion session files
 .superpowers/
+
+# Stray build artifacts (review/autosave APKs, fixed zip)
+*.apk
+*_fixed.zip
