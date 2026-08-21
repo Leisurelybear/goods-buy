@@ -13,7 +13,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
@@ -42,7 +41,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.calculator.CollectibleAccounting
-import com.goodsbuy.app.ui.components.StatusChip
 import com.goodsbuy.app.ui.components.ProfitLossText
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,25 +123,35 @@ if (collectible.imagePaths.isNotEmpty()) {
                      )
                  }
 
-                 // 快捷状态修改
-                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                     Column(modifier = Modifier.padding(12.dp)) {
-                         Text("点击修改状态", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                         Spacer(modifier = Modifier.height(8.dp))
-                         Row(
-                             modifier = Modifier.horizontalScroll(rememberScrollState()),
-                             horizontalArrangement = Arrangement.spacedBy(6.dp)
-                         ) {
-                             OrderStatus.entries.forEach { status ->
-                                 FilterChip(
-                                     selected = collectible.status == status,
-                                     onClick = { viewModel.updateStatus(status) },
-                                     label = { Text(status.displayName, style = MaterialTheme.typography.labelSmall) }
-                                 )
-                             }
-                         }
-                     }
-                 }
+                // 快捷状态修改
+                Text(
+                    "快捷状态",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(OrderStatus.entries.size) { index ->
+                        val status = OrderStatus.entries[index]
+                        val selected = collectible.status == status
+                        Surface(
+                            onClick = { viewModel.updateStatus(status) },
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            shape = RoundedCornerShape(999.dp)
+                        ) {
+                            Text(
+                                status.displayName,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
 
                  Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
