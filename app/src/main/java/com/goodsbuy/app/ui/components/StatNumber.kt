@@ -1,35 +1,33 @@
 package com.goodsbuy.app.ui.components
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
 
+/**
+ * 看板/统计数字：加粗、等宽数字（tnum）、带滚动计数动画。
+ * 默认 ¥ 前缀；渐变卡上文字统一用 [MaterialTheme.colorScheme.onPrimary] 以保证对比度。
+ */
 @Composable
 fun StatNumber(
-    value: String,
-    label: String,
+    value: Double,
     modifier: Modifier = Modifier,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    displayLarge: Boolean = true
+    style: TextStyle = MaterialTheme.typography.titleLarge,
+    color: Color = MaterialTheme.colorScheme.onPrimary,
+    decimals: Int = 0,
+    prefix: String = "\u00a5",
+    suffix: String = ""
 ) {
-    Column(modifier = modifier.padding(4.dp)) {
-        Text(
-            text = value,
-            style = if (displayLarge) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.titleLarge,
-            color = valueColor,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = labelColor
-        )
-    }
+    val tabular = style.copy(fontFeatureSettings = "tnum")
+    AnimatedNumber(
+        targetValue = value,
+        modifier = modifier,
+        style = tabular,
+        color = color,
+        decimals = decimals,
+        prefix = prefix,
+        suffix = suffix
+    )
 }

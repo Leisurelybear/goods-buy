@@ -202,20 +202,16 @@ fun CollectibleListScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GradientCard(modifier = Modifier.weight(1f)) {
-                    StatNumber(
-                        value = uiState.summary.totalCount.toString(),
-                        label = "藏品总数",
-                        valueColor = MaterialTheme.colorScheme.onPrimary,
-                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
+                    Column {
+                        Text("藏品总数", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+                        StatNumber(value = uiState.summary.totalCount.toDouble(), color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
                 GradientCard(modifier = Modifier.weight(1f)) {
-                    StatNumber(
-                        value = "¥${String.format("%,.0f", uiState.summary.totalInvestment)}",
-                        label = "总投入",
-                        valueColor = MaterialTheme.colorScheme.onPrimary,
-                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
+                    Column {
+                        Text("总投入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+                        StatNumber(value = uiState.summary.totalInvestment, color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
             Row(
@@ -226,20 +222,16 @@ fun CollectibleListScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GradientCard(modifier = Modifier.weight(1f)) {
-                    StatNumber(
-                        value = "¥${String.format("%,.0f", uiState.summary.totalRevenue)}",
-                        label = "总回收",
-                        valueColor = MaterialTheme.colorScheme.onPrimary,
-                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
+                    Column {
+                        Text("总回收", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+                        StatNumber(value = uiState.summary.totalRevenue, color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
                 GradientCard(modifier = Modifier.weight(1f)) {
-                    StatNumber(
-                        value = "${if (uiState.summary.totalProfitRate >= 0) "+" else ""}${String.format("%.1f", uiState.summary.totalProfitRate)}%",
-                        label = "总收益率",
-                        valueColor = MaterialTheme.colorScheme.onPrimary,
-                        labelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
+                    Column {
+                        Text("总收益率", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
+                        StatNumber(value = uiState.summary.totalProfitRate, decimals = 1, suffix = "%", color = MaterialTheme.colorScheme.onPrimary)
+                    }
                 }
             }
 
