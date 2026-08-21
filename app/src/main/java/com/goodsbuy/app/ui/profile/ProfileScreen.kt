@@ -1,5 +1,6 @@
 package com.goodsbuy.app.ui.profile
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,8 +13,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,18 +21,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.FileProvider
 import com.goodsbuy.app.BuildConfig
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
 import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.ListRowItem
 import com.goodsbuy.app.ui.components.SectionHeader
 import com.goodsbuy.app.ui.preferences.GridPreferences
+import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.theme.AppThemes
 import com.goodsbuy.app.util.AppLogger
-import android.content.Intent
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
-import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +42,7 @@ fun ProfileScreen(
     onNavigateToForm: (Long?) -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
-var showSettings by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showDrafts by remember { mutableStateOf(false) }
     var showDeleteLogsDialog by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
@@ -109,7 +107,7 @@ var showSettings by remember { mutableStateOf(false) }
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (showSettings) "显示设置" else if (showDrafts) "草稿箱" else "我的") },
+                title = { Text(if (showSettings) "设置" else if (showDrafts) "草稿箱" else "我的") },
                 navigationIcon = {
                     if (showSettings || showDrafts) {
                         IconButton(onClick = { showSettings = false; showDrafts = false }) {
@@ -125,209 +123,12 @@ var showSettings by remember { mutableStateOf(false) }
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (showSettings) {
-                // Settings screen
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("显示设置", style = MaterialTheme.typography.titleMedium)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("每行展示数量", style = MaterialTheme.typography.bodyLarge)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = {
-                                    if (prefs.columns > 1) { prefs = prefs.copy(columns = prefs.columns - 1); preferencesRepository.save(prefs) }
-                                }) { Text("-", style = MaterialTheme.typography.headlineMedium) }
-                                Text("${prefs.columns}", style = MaterialTheme.typography.titleMedium)
-                                IconButton(onClick = {
-                                    if (prefs.columns < 4) { prefs = prefs.copy(columns = prefs.columns + 1); preferencesRepository.save(prefs) }
-                                }) { Text("+", style = MaterialTheme.typography.headlineMedium) }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("卡片大小", style = MaterialTheme.typography.bodyLarge)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = {
-                                    if (prefs.cardSize > 100) { prefs = prefs.copy(cardSize = prefs.cardSize - 20); preferencesRepository.save(prefs) }
-                                }) { Text("-", style = MaterialTheme.typography.headlineMedium) }
-                                Text("${prefs.cardSize}dp", style = MaterialTheme.typography.titleMedium)
-                                IconButton(onClick = {
-                                    if (prefs.cardSize < 200) { prefs = prefs.copy(cardSize = prefs.cardSize + 20); preferencesRepository.save(prefs) }
-                                }) { Text("+", style = MaterialTheme.typography.headlineMedium) }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("字体大小", style = MaterialTheme.typography.bodyLarge)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val labels = listOf("小", "中", "大")
-                                labels.forEachIndexed { idx, label ->
-                                    FilterChip(
-                                        selected = prefs.fontSize == idx,
-                                        onClick = { prefs = prefs.copy(fontSize = idx); preferencesRepository.save(prefs) },
-                                        label = { Text(label) },
-                                        modifier = Modifier.padding(horizontal = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider()
-
-                        SettingToggleRow("显示名称", prefs.showName) { prefs = prefs.copy(showName = it); preferencesRepository.save(prefs) }
-                        SettingToggleRow("显示价格", prefs.showPrice) { prefs = prefs.copy(showPrice = it); preferencesRepository.save(prefs) }
-                        SettingToggleRow("显示状态", prefs.showStatus) { prefs = prefs.copy(showStatus = it); preferencesRepository.save(prefs) }
-                        SettingToggleRow("显示排序栏", prefs.showSortControl) { prefs = prefs.copy(showSortControl = it); preferencesRepository.save(prefs) }
-
-                        HorizontalDivider()
-
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("草稿自动保存间隔", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "停止编辑后保存，推荐 0.5 秒",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val delayOptions = PreferencesRepository.DRAFT_AUTO_SAVE_DELAY_OPTIONS.map { delayMillis ->
-                                delayMillis to if (delayMillis == 500L) "0.5 秒" else "${delayMillis / 1_000} 秒"
-                            }
-                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                delayOptions.forEachIndexed { index, (delayMillis, label) ->
-                                    SegmentedButton(
-                                        selected = prefs.draftAutoSaveDelayMillis == delayMillis,
-                                        onClick = {
-                                            prefs = prefs.copy(draftAutoSaveDelayMillis = delayMillis)
-                                            preferencesRepository.save(prefs)
-                                        },
-                                        shape = SegmentedButtonDefaults.itemShape(index, delayOptions.size),
-                                        label = { Text(label) }
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider()
-
-                        SettingToggleRow("首页多图自动轮询", prefs.homeImageAutoRotate) {
-                            prefs = prefs.copy(homeImageAutoRotate = it)
-                            preferencesRepository.save(prefs)
-                        }
-                        Text(
-                            "开启后，首页当前屏幕中的多图片藏品会自动切换封面",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("轮询间隔", style = MaterialTheme.typography.bodyLarge)
-                                Text("每张图片停留的时间", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = {
-                                        if (prefs.homeImageRotationIntervalSeconds > 1) {
-                                            prefs = prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds - 1)
-                                            preferencesRepository.save(prefs)
-                                        }
-                                    },
-                                    enabled = prefs.homeImageRotationIntervalSeconds > 1
-                                ) { Text("−", style = MaterialTheme.typography.headlineMedium) }
-                                Text("${prefs.homeImageRotationIntervalSeconds} 秒", style = MaterialTheme.typography.titleMedium)
-                                IconButton(
-                                    onClick = {
-                                        if (prefs.homeImageRotationIntervalSeconds < 60) {
-                                            prefs = prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds + 1)
-                                            preferencesRepository.save(prefs)
-                                        }
-                                    },
-                                    enabled = prefs.homeImageRotationIntervalSeconds < 60
-                                ) { Text("+", style = MaterialTheme.typography.headlineMedium) }
-                            }
-                        }
-
-                        HorizontalDivider()
-
-                        Text("图鉴入口", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            "选择图鉴入口显示的位置",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            listOf("藏品柜", "我的").forEachIndexed { index, label ->
-                                val selected = if (index == 0) prefs.galleryEntryHome else !prefs.galleryEntryHome
-                                SegmentedButton(
-                                    selected = selected,
-                                    onClick = {
-                                        prefs = prefs.copy(galleryEntryHome = index == 0)
-                                        preferencesRepository.save(prefs)
-                                    },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
-                                    label = { Text(label) }
-                                )
-                            }
-                        }
-
-                        SettingToggleRow("启用日志记录", prefs.loggingEnabled) {
-                            prefs = prefs.copy(loggingEnabled = it); preferencesRepository.save(prefs)
-                            com.goodsbuy.app.util.AppLogger.setEnabled(it)
-                        }
-                        val ctx = androidx.compose.ui.platform.LocalContext.current
-                            val logFile = com.goodsbuy.app.util.AppLogger.getLogFile()
-                            val crashFile = com.goodsbuy.app.util.AppLogger.getCrashLogFile()
-                            if (logFile != null || crashFile != null) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable {
-                                        val files = listOfNotNull(logFile, crashFile)
-                                        val uris = ArrayList(files.map {
-                                            androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", it)
-                                        })
-                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
-                                            type = "*/*"
-                                            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
-                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                        ctx.startActivity(android.content.Intent.createChooser(shareIntent, "分享日志文件"))
-                                    },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text("导出日志", style = MaterialTheme.typography.bodyLarge)
-Text("分享 app.log / crash.log", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { showDeleteLogsDialog = true },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text("删除日志", style = MaterialTheme.typography.bodyLarge)
-Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (showDrafts) {
+                SettingsContent(
+                    prefs = prefs,
+                    onPrefsChange = { prefs = it; preferencesRepository.save(it) },
+                    onDeleteLogsRequest = { showDeleteLogsDialog = true }
+                )
+            } else if (showDrafts) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (drafts.isEmpty()) {
@@ -418,7 +219,7 @@ Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bo
             text = { Text("将删除 app.log 和 crash.log 以释放空间，删除后仍会继续记录新日志。") },
             confirmButton = {
                 TextButton(onClick = {
-                    com.goodsbuy.app.util.AppLogger.deleteLogs()
+                    AppLogger.deleteLogs()
                     showDeleteLogsDialog = false
                     scope.launch { snackbarHostState.showSnackbar("日志已删除") }
                 }) { Text("删除") }
@@ -431,13 +232,252 @@ Text("删除后仍会继续记录新日志", style = MaterialTheme.typography.bo
 }
 
 @Composable
-fun SettingToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+private fun SettingsGroup(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    SectionHeader(title = title)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun SettingSwitchRow(
+    label: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    ListRowItem(
+        title = label,
+        subtitle = subtitle,
+        trailing = {
+            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        }
+    )
+}
+
+@Composable
+private fun StepperRow(
+    title: String,
+    value: String,
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    subtitle: String? = null,
+    enabled: Boolean = true
+) {
+    ListRowItem(
+        title = title,
+        subtitle = subtitle,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDecrease, enabled = enabled && canDecrease) {
+                    Icon(Icons.Default.Remove, contentDescription = "减少", tint = MaterialTheme.colorScheme.primary)
+                }
+                Text(value, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 4.dp))
+                IconButton(onClick = onIncrease, enabled = enabled && canIncrease) {
+                    Icon(Icons.Default.Add, contentDescription = "增加", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsContent(
+    prefs: GridPreferences,
+    onPrefsChange: (GridPreferences) -> Unit,
+    onDeleteLogsRequest: () -> Unit
+) {
+    var showThemeDialog by remember { mutableStateOf(false) }
+
+    SettingsGroup(title = "外观") {
+        ListRowItem(
+            title = "主题",
+            subtitle = "当前：${AppThemes.byId(prefs.themeId).label}",
+            trailing = {
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            },
+            onClick = { showThemeDialog = true }
+        )
+        HorizontalDivider()
+        StepperRow(
+            title = "每行展示数量",
+            value = "${prefs.columns}",
+            canDecrease = prefs.columns > 1,
+            canIncrease = prefs.columns < 4,
+            onDecrease = { onPrefsChange(prefs.copy(columns = prefs.columns - 1)) },
+            onIncrease = { onPrefsChange(prefs.copy(columns = prefs.columns + 1)) }
+        )
+        HorizontalDivider()
+        StepperRow(
+            title = "卡片大小",
+            value = "${prefs.cardSize}dp",
+            canDecrease = prefs.cardSize > 100,
+            canIncrease = prefs.cardSize < 200,
+            onDecrease = { onPrefsChange(prefs.copy(cardSize = prefs.cardSize - 20)) },
+            onIncrease = { onPrefsChange(prefs.copy(cardSize = prefs.cardSize + 20)) }
+        )
+        HorizontalDivider()
+        ListRowItem(
+            title = "字体大小",
+            trailing = {
+                Row {
+                    listOf("小", "中", "大").forEachIndexed { idx, label ->
+                        FilterChip(
+                            selected = prefs.fontSize == idx,
+                            onClick = { onPrefsChange(prefs.copy(fontSize = idx)) },
+                            label = { Text(label) },
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        )
+                    }
+                }
+            }
+        )
+        HorizontalDivider()
+        SettingSwitchRow("显示名称", prefs.showName) { onPrefsChange(prefs.copy(showName = it)) }
+        HorizontalDivider()
+        SettingSwitchRow("显示价格", prefs.showPrice) { onPrefsChange(prefs.copy(showPrice = it)) }
+        HorizontalDivider()
+        SettingSwitchRow("显示状态", prefs.showStatus) { onPrefsChange(prefs.copy(showStatus = it)) }
+    }
+
+    SettingsGroup(title = "首页行为") {
+        SettingSwitchRow("显示排序栏", prefs.showSortControl) { onPrefsChange(prefs.copy(showSortControl = it)) }
+        HorizontalDivider()
+        SettingSwitchRow(
+            "多图自动轮询",
+            prefs.homeImageAutoRotate,
+            subtitle = "开启后，首页当前屏幕中的多图片藏品会自动切换封面"
+        ) { onPrefsChange(prefs.copy(homeImageAutoRotate = it)) }
+        HorizontalDivider()
+        StepperRow(
+            title = "轮询间隔",
+            subtitle = "每张图片停留的时间",
+            value = "${prefs.homeImageRotationIntervalSeconds} 秒",
+            canDecrease = prefs.homeImageRotationIntervalSeconds > 1,
+            canIncrease = prefs.homeImageRotationIntervalSeconds < 60,
+            onDecrease = { onPrefsChange(prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds - 1)) },
+            onIncrease = { onPrefsChange(prefs.copy(homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds + 1)) },
+            enabled = prefs.homeImageAutoRotate
+        )
+    }
+
+    SettingsGroup(title = "编辑与草稿") {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("草稿自动保存间隔", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "停止编辑后保存，推荐 0.5 秒",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val delayOptions = PreferencesRepository.DRAFT_AUTO_SAVE_DELAY_OPTIONS.map { delayMillis ->
+                delayMillis to if (delayMillis == 500L) "0.5 秒" else "${delayMillis / 1_000} 秒"
+            }
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                delayOptions.forEachIndexed { index, (delayMillis, label) ->
+                    SegmentedButton(
+                        selected = prefs.draftAutoSaveDelayMillis == delayMillis,
+                        onClick = { onPrefsChange(prefs.copy(draftAutoSaveDelayMillis = delayMillis)) },
+                        shape = SegmentedButtonDefaults.itemShape(index, delayOptions.size),
+                        label = { Text(label) }
+                    )
+                }
+            }
+        }
+    }
+
+    SettingsGroup(title = "图鉴") {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("入口位置", style = MaterialTheme.typography.titleMedium)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                listOf("藏品柜", "我的").forEachIndexed { index, label ->
+                    SegmentedButton(
+                        selected = if (index == 0) prefs.galleryEntryHome else !prefs.galleryEntryHome,
+                        onClick = { onPrefsChange(prefs.copy(galleryEntryHome = index == 0)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                        label = { Text(label) }
+                    )
+                }
+            }
+        }
+    }
+
+    val ctx = LocalContext.current
+    val logFile = AppLogger.getLogFile()
+    val crashFile = AppLogger.getCrashLogFile()
+    SettingsGroup(title = "日志") {
+        SettingSwitchRow("启用记录", prefs.loggingEnabled, subtitle = "记录运行日志用于排查问题") {
+            onPrefsChange(prefs.copy(loggingEnabled = it))
+            AppLogger.setEnabled(it)
+        }
+        if (logFile != null || crashFile != null) {
+            HorizontalDivider()
+            ListRowItem(
+                title = "导出日志",
+                subtitle = "分享 app.log / crash.log",
+                onClick = {
+                    val files = listOfNotNull(logFile, crashFile)
+                    val uris = ArrayList(files.map {
+                        FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", it)
+                    })
+                    val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "*/*"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(Intent.createChooser(shareIntent, "分享日志文件"))
+                }
+            )
+            HorizontalDivider()
+            ListRowItem(
+                title = "删除日志",
+                subtitle = "删除后仍会继续记录新日志",
+                onClick = onDeleteLogsRequest
+            )
+        }
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("选择主题") },
+            text = {
+                Column {
+                    AppThemes.all.forEach { theme ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                onPrefsChange(prefs.copy(themeId = theme.id))
+                                showThemeDialog = false
+                            },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = prefs.themeId == theme.id,
+                                onClick = {
+                                    onPrefsChange(prefs.copy(themeId = theme.id))
+                                    showThemeDialog = false
+                                }
+                            )
+                            Text(theme.label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text("完成") }
+            }
+        )
     }
 }
