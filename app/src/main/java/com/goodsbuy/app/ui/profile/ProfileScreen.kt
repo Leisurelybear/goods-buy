@@ -67,11 +67,9 @@ fun ProfileScreen(
         contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        viewModel.exportBackup(
-            outputUri = uri,
-            onSuccess = { scope.launch { snackbarHostState.showSnackbar("导出成功") } },
-            onFailure = { message -> scope.launch { snackbarHostState.showSnackbar("导出失败: $message") } }
-        )
+        viewModel.exportBackup(uri) { count ->
+            scope.launch { snackbarHostState.showSnackbar("导出成功：$count 条藏品") }
+        }
     }
 
     // Collect state from ViewModel
@@ -79,26 +77,37 @@ fun ProfileScreen(
     val currentImportMode by viewModel.importMode.collectAsState()
     val isImporting by viewModel.isImporting.collectAsState()
     val importProgress by viewModel.importProgress.collectAsState()
+    val importStage by viewModel.importStage.collectAsState()
+    val importError by viewModel.importError.collectAsState()
+    val isExporting by viewModel.isExporting.collectAsState()
+    val exportProgress by viewModel.exportProgress.collectAsState()
+    val exportStage by viewModel.exportStage.collectAsState()
+    val exportError by viewModel.exportError.collectAsState()
     val drafts by viewModel.drafts.collectAsState()
 
     // Import preview is a full-screen surface with its own TopAppBar — render it
     // directly to avoid a double title bar (ProfileScreen's + ImportPreviewScreen's).
     if (currentImportPreview != null) {
+        // Failures surface inline on the preview (its SnackbarHost is not the one
+        // rendered here), so the user can retry without re-picking the file.
+        val runImport: () -> Unit = {
+            scope.launch {
+                viewModel.confirmImport { count ->
+                    snackbarHostState.showSnackbar("成功导入 $count 条藏品")
+                }
+            }
+        }
         ImportPreviewScreen(
             preview = currentImportPreview!!,
             importMode = currentImportMode,
             onModeChange = { viewModel.setImportMode(it) },
-            onConfirm = {
-                scope.launch {
-                    viewModel.confirmImport(
-                        onSuccess = { count -> snackbarHostState.showSnackbar("成功导入 $count 条藏品") },
-                        onFailure = { message -> snackbarHostState.showSnackbar("导入失败: $message") }
-                    )
-                }
-            },
+            onConfirm = runImport,
             onDismiss = { viewModel.clearPreview() },
             isImporting = isImporting,
-            importProgress = importProgress
+            importProgress = importProgress,
+            importStage = importStage,
+            errorMessage = importError,
+            onRetry = runImport
         )
         return
     }
@@ -210,6 +219,47 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (isExporting) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("正在导出备份") },
+            text = {
+                Column {
+                    Text("${exportStage.label}…")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { exportProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "${(exportProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (exportError != null && !isExporting) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissExport() },
+            title = { Text("导出失败") },
+            text = { Text(exportError.orEmpty()) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.retryExport { count ->
+                        scope.launch { snackbarHostState.showSnackbar("导出成功：$count 条藏品") }
+                    }
+                }) { Text("重试导出") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissExport() }) { Text("取消") }
+            }
+        )
     }
 
     if (showDeleteLogsDialog) {

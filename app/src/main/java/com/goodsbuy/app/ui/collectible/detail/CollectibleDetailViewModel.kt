@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.calculator.ProfitLossCalculator
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.domain.usecase.UpdateCollectibleStatusUseCase
 import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.util.AppLogger
 import com.goodsbuy.app.util.UndoDeleteManager
@@ -23,6 +24,7 @@ class CollectibleDetailViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     private val calculator: ProfitLossCalculator,
     private val undoDeleteManager: UndoDeleteManager,
+    private val updateStatusUseCase: UpdateCollectibleStatusUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -40,11 +42,7 @@ class CollectibleDetailViewModel @Inject constructor(
     fun updateStatus(newStatus: OrderStatus) {
         val collectible = _uiState.value.collectible ?: return
         viewModelScope.launch {
-            val updated = collectible.copy(
-                status = newStatus,
-                sellDate = if (newStatus == OrderStatus.SOLD && collectible.sellDate == null) System.currentTimeMillis() else collectible.sellDate
-            )
-            repository.updateCollectible(updated)
+            val updated = updateStatusUseCase(collectible, newStatus)
             val pl = if (updated.status == OrderStatus.SOLD || updated.sellPrice != null) calculator.calculate(updated) else null
             _uiState.update { it.copy(collectible = updated, profitLoss = pl) }
             AppLogger.i("Status", "Detail update: id=${collectible.id}, name=${collectible.name}, ${collectible.status} -> $newStatus")

@@ -174,7 +174,7 @@ if (collectible.imagePaths.isNotEmpty()) {
                         DetailRow("入手单价", "¥${formatPrice(collectible.purchasePrice)}")
                         DetailRow("购入数量", "${collectible.purchaseQuantity}")
                         DetailRow("购入运费", "¥${formatPrice(collectible.purchaseShipping)}")
-                        DetailRow("心理预期价", "¥${formatPrice(collectible.expectedPrice)}")
+                        DetailRow("心理预期价（单价）", "¥${formatPrice(collectible.expectedPrice)}")
                         DetailRow("总成本", "¥${formatPrice(CollectibleAccounting.purchaseTotal(collectible))}")
                     }
                 }

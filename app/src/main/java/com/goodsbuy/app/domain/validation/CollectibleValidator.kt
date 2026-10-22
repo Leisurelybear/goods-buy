@@ -30,7 +30,7 @@ object CollectibleValidator {
         val quantity = input.purchaseQuantity.toIntOrNull()
         if (quantity == null || quantity <= 0) errors["purchaseQuantity"] = "购入数量必须是大于 0 的整数"
         validateNonNegative(input.purchaseShipping, "purchaseShipping", "购入运费", errors)
-        validateNonNegative(input.expectedPrice, "expectedPrice", "心理预期价", errors, allowBlank = true)
+        validateNonNegative(input.expectedPrice, "expectedPrice", "心理预期价（单价）", errors, allowBlank = true)
 
         val sellPrice = validateNonNegative(input.sellPrice, "sellPrice", "售出单价", errors, allowBlank = true)
         val sellQuantity = validatePositiveInt(input.sellQuantity, "sellQuantity", "售出数量", errors, allowBlank = true)

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.ui.backup.ImportMode
+import com.goodsbuy.app.util.BackupStage
 import com.goodsbuy.app.util.CollectibleRecord
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,8 +31,16 @@ fun ImportPreviewScreen(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     isImporting: Boolean = false,
-    importProgress: Float = 0f
+    importProgress: Float = 0f,
+    importStage: BackupStage = BackupStage.READING,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {}
 ) {
+    val phase = when {
+        isImporting -> ImportPhase.IMPORTING
+        errorMessage != null -> ImportPhase.FAILED
+        else -> ImportPhase.READY
+    }
     val modes = listOf(
         ImportMode.SKIP to "跳过重复",
         ImportMode.ADD to "新增重复",
@@ -118,38 +127,69 @@ fun ImportPreviewScreen(
             }
 
             Crossfade(
-                targetState = isImporting,
+                targetState = phase,
                 animationSpec = tween(250),
                 label = "import_action"
-            ) { importing ->
-                if (importing) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                        val percent = (importProgress * 100).toInt()
-                        Text(
-                            "正在导入… $percent%",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        LinearProgressIndicator(
-                            progress = { importProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+            ) { current ->
+                when (current) {
+                    ImportPhase.IMPORTING -> {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            val percent = (importProgress * 100).toInt()
+                            Text(
+                                "${importStage.label}… $percent%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            LinearProgressIndicator(
+                                progress = { importProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
-                } else {
-                    Button(
-                        onClick = onConfirm,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        enabled = preview.willImport > 0
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("确认导入 ${preview.willImport} 条藏品")
+
+                    ImportPhase.FAILED -> {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    errorMessage.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Sync, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("重试导入")
+                            }
+                        }
+                    }
+
+                    ImportPhase.READY -> {
+                        Button(
+                            onClick = onConfirm,
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            enabled = preview.willImport > 0
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("确认导入 ${preview.willImport} 条藏品")
+                        }
                     }
                 }
             }
         }
     }
 }
+
+private enum class ImportPhase { READY, IMPORTING, FAILED }
 
 @Composable
 fun ImportPreviewRow(record: CollectibleRecord, action: ImportAction, reason: String) {

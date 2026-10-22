@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.domain.usecase.UpdateCollectibleStatusUseCase
 import com.goodsbuy.app.di.DefaultDispatcher
 import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.PendingDeletion
@@ -22,12 +23,14 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     private val undoDeleteManager: UndoDeleteController,
+    private val updateStatusUseCase: UpdateCollectibleStatusUseCase,
     @DefaultDispatcher private val groupingDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -36,7 +39,12 @@ class GalleryViewModel @Inject constructor(
         repository: CollectibleRepository,
         context: android.content.Context,
         groupingDispatcher: CoroutineDispatcher
-    ) : this(repository, RepositoryUndoDeleteController(repository), groupingDispatcher)
+    ) : this(
+        repository,
+        RepositoryUndoDeleteController(repository),
+        UpdateCollectibleStatusUseCase(repository),
+        groupingDispatcher
+    )
 
     val pendingDeletion: StateFlow<PendingDeletion?> = undoDeleteManager.pending
 
@@ -79,11 +87,7 @@ class GalleryViewModel @Inject constructor(
 
     fun quickUpdateStatus(collectible: Collectible, newStatus: OrderStatus) {
         viewModelScope.launch {
-            val updated = collectible.copy(
-                status = newStatus,
-                sellDate = if (newStatus == OrderStatus.SOLD) System.currentTimeMillis() else collectible.sellDate
-            )
-            repository.updateCollectible(updated)
+            updateStatusUseCase(collectible, newStatus)
         }
     }
 
@@ -97,7 +101,7 @@ class GalleryViewModel @Inject constructor(
                 val src = File(path)
                 if (!src.exists()) return@mapNotNull null
                 val parentDir = src.parentFile ?: return@mapNotNull null
-                val dest = File(parentDir, "${System.currentTimeMillis()}_${src.name}")
+                val dest = File(parentDir, "${UUID.randomUUID()}_${src.name}")
                 try {
                     src.copyTo(dest, overwrite = false)
                     dest.absolutePath
@@ -106,12 +110,13 @@ class GalleryViewModel @Inject constructor(
                     null
                 }
             }
+            val timestamp = System.currentTimeMillis()
             val dup = collectible.copy(
                 id = 0L,
                 name = CollectibleNameUtils.buildDuplicateName(collectible.name, ts),
                 imagePaths = newImages,
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                createdAt = timestamp,
+                updatedAt = timestamp
             )
             repository.insertCollectible(dup)
         }

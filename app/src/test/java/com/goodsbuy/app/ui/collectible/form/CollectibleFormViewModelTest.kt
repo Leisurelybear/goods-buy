@@ -2,6 +2,7 @@ package com.goodsbuy.app.ui.collectible.form
 
 import android.content.Context
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.domain.usecase.UpdateCollectibleStatusUseCase
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import io.mockk.mockk
 import org.junit.After
@@ -27,12 +28,16 @@ class CollectibleFormViewModelTest {
         tmpDir.deleteRecursively()
     }
 
-    private fun newViewModel(): CollectibleFormViewModel = CollectibleFormViewModel(
-        repository = mockk<CollectibleRepository>(relaxed = true),
-        context = mockk<Context>(),
-        draftStore = mockk<CollectibleDraftStore>(relaxed = true),
-        preferencesRepository = mockk<PreferencesRepository>(relaxed = true)
-    )
+    private fun newViewModel(): CollectibleFormViewModel {
+        val repository = mockk<CollectibleRepository>(relaxed = true)
+        return CollectibleFormViewModel(
+            repository = repository,
+            context = mockk<Context>(),
+            draftStore = mockk<CollectibleDraftStore>(relaxed = true),
+            preferencesRepository = mockk<PreferencesRepository>(relaxed = true),
+            updateStatusUseCase = UpdateCollectibleStatusUseCase(repository)
+        )
+    }
 
     @Test
     fun `addCapturedImage appends result and respects max of 9`() {

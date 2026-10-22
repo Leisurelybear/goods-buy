@@ -24,11 +24,8 @@ class CollectibleRepositoryImpl @Inject constructor(
     override suspend fun getCollectibleById(id: Long): Collectible? =
         collectibleDao.getCollectibleById(id)?.toDomain()
 
-    override fun getCollectiblesByStatus(status: String): Flow<List<Collectible>> =
-        collectibleDao.getCollectiblesByStatus(status).map { list -> list.map { it.toDomain() } }
-
-    override fun searchCollectibles(query: String): Flow<List<Collectible>> =
-        collectibleDao.searchCollectibles(query).map { list -> list.map { it.toDomain() } }
+    override fun observeCollectibles(query: String, status: String?): Flow<List<Collectible>> =
+        collectibleDao.observeCollectibles(query, status).map { list -> list.map { it.toDomain() } }
 
     override suspend fun insertCollectible(collectible: Collectible): Long =
         collectibleDao.insertCollectible(collectible.toEntity())

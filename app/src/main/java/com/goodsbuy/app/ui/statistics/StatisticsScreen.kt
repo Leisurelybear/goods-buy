@@ -204,17 +204,24 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     Column {
                         Text(stat.categoryName, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "${stat.count}件 · 投入\u00a5${String.format("%.0f", stat.investment)}",
+                            "${stat.count}件 · 购入\u00a5${String.format("%.0f", stat.grossInvestment)} · 已结算\u00a5${String.format("%.0f", stat.realizedCost)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (stat.holdingValue > 0) {
+                            Text(
+                                "持仓\u00a5${String.format("%.0f", stat.holdingValue)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     ProfitLossText(
                         profitLoss = ProfitLoss(
-                            stat.investment,
+                            stat.realizedCost,
                             stat.revenue,
                             stat.profit,
-                            if (stat.investment > 0) (stat.profit / stat.investment) * 100 else 0.0
+                            if (stat.realizedCost > 0) (stat.profit / stat.realizedCost) * 100 else 0.0
                         )
                     )
                 }

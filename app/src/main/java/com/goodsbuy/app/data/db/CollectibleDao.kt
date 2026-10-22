@@ -12,11 +12,27 @@ interface CollectibleDao {
     @Query("SELECT * FROM collectibles WHERE id = :id")
     suspend fun getCollectibleById(id: Long): CollectibleEntity?
 
-    @Query("SELECT * FROM collectibles WHERE status = :status ORDER BY createdAt DESC")
-    fun getCollectiblesByStatus(status: String): Flow<List<CollectibleEntity>>
-
-    @Query("SELECT * FROM collectibles WHERE name LIKE '%' || :query || '%' OR seriesName LIKE '%' || :query || '%' OR ipName LIKE '%' || :query || '%' OR characterTag LIKE '%' || :query || '%' OR purchaseShop LIKE '%' || :query || '%' ORDER BY createdAt DESC")
-    fun searchCollectibles(query: String): Flow<List<CollectibleEntity>>
+    /**
+     * Combined search + status filter. Both conditions apply at once, so
+     * "search + 已售出" no longer silently ignores one of them. A blank
+     * [query] or a null [status] disables just that half of the predicate.
+     */
+    @Query(
+        """
+        SELECT * FROM collectibles
+        WHERE (:status IS NULL OR status = :status)
+          AND (
+            :query = ''
+            OR name LIKE '%' || :query || '%'
+            OR seriesName LIKE '%' || :query || '%'
+            OR ipName LIKE '%' || :query || '%'
+            OR characterTag LIKE '%' || :query || '%'
+            OR purchaseShop LIKE '%' || :query || '%'
+          )
+        ORDER BY createdAt DESC
+        """
+    )
+    fun observeCollectibles(query: String, status: String?): Flow<List<CollectibleEntity>>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertCollectible(collectible: CollectibleEntity): Long

@@ -15,7 +15,11 @@ class GetDashboardSummaryUseCase @Inject constructor() {
         val totalRevenue = soldOnes.sumOf { CollectibleAccounting.saleRevenue(it) }
         val costOfSettled = collectibles.filter { it.status in settledStatuses }
             .sumOf { CollectibleAccounting.realizedCost(it) }
-        val holdingValue = collectibles.filter { it.status !in settledStatuses }.sumOf { it.expectedPrice }
+        // expectedPrice is a unit price, so only the still-held units count
+        // toward portfolio value; summing it raw under-valued multi-quantity
+        // records that had already sold part of their stock.
+        val holdingValue = collectibles.filter { it.status !in settledStatuses }
+            .sumOf { it.expectedPrice * CollectibleAccounting.remainingQuantity(it) }
         val totalProfit = totalRevenue - costOfSettled
         val totalProfitRate = if (costOfSettled > 0) (totalProfit / costOfSettled) * 100 else 0.0
         return DashboardSummary(

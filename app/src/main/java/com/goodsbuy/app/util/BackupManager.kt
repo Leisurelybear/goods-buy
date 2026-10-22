@@ -20,10 +20,32 @@ import androidx.room.withTransaction
 
 private const val TAG = "BackupManager"
 private const val BACKUP_VERSION = 1
-private const val MAX_ZIP_ENTRIES = 2_000
-private const val MAX_ENTRY_BYTES = 20L * 1024 * 1024
-private const val MAX_TOTAL_BYTES = 200L * 1024 * 1024
+
+/**
+ * Import-side limits.
+ *
+ * These must stay comfortably above what our own exporter can produce, otherwise a user's
+ * own backup could be rejected on restore: a single collectible can carry many photos, so
+ * the entry count is generous while the byte caps keep a hostile archive bounded.
+ */
+internal const val MAX_ZIP_ENTRIES = 20_000
+internal const val MAX_ENTRY_BYTES = 32L * 1024 * 1024
+internal const val MAX_TOTAL_BYTES = 200L * 1024 * 1024
+internal const val MAX_COMPRESSION_RATIO = 100L
 private const val MAX_MANIFEST_BYTES = 5L * 1024 * 1024
+
+/**
+ * Hard limits applied while unpacking a backup.
+ *
+ * Injectable so tests can use tiny values instead of building multi-megabyte
+ * archives; production call sites rely on the defaults.
+ */
+internal data class ZipLimits(
+    val maxEntries: Int = MAX_ZIP_ENTRIES,
+    val maxEntryBytes: Long = MAX_ENTRY_BYTES,
+    val maxTotalBytes: Long = MAX_TOTAL_BYTES,
+    val maxCompressionRatio: Long = MAX_COMPRESSION_RATIO
+)
 
 data class CollectibleRecord(
     val id: Long,
@@ -60,6 +82,22 @@ data class Manifest(
     val timestamp: Long,
     val collectibles: List<CollectibleRecord>
 )
+
+/** Coarse phases of an import, surfaced so the UI can label the progress bar. */
+enum class BackupStage(val label: String) {
+    READING("读取备份"),
+    VALIDATING("校验清单"),
+    COPYING_IMAGES("复制图片"),
+    WRITING("写入数据库"),
+    CLEANUP("清理临时文件")
+}
+
+/** Coarse phases of an export, surfaced so the UI can label the progress bar. */
+enum class ExportStage(val label: String) {
+    PREPARING("准备数据"),
+    WRITING("写入备份文件"),
+    FINALIZING("清理临时文件")
+}
 
 /** Read a nullable field, returning null for both a missing key and an explicit JSON null. */
 private fun JSONObject.optNullableString(name: String): String? =
@@ -117,13 +155,19 @@ private fun CollectibleEntity.fingerprint(): String {
 
 object BackupManager {
 
-    fun export(context: Context, collectibles: List<Collectible>, outputUri: Uri): Boolean {
+    fun export(
+        context: Context,
+        collectibles: List<Collectible>,
+        outputUri: Uri,
+        onProgress: (stage: ExportStage, current: Int, total: Int) -> Unit = { _, _, _ -> }
+    ): Result<Unit> {
+        val backupDir = File(context.cacheDir, "backup_export")
         return try {
-            val backupDir = File(context.cacheDir, "backup_export")
             if (backupDir.exists()) backupDir.deleteRecursively()
             backupDir.mkdirs()
 
-            val recordList = collectibles.map { c ->
+            onProgress(ExportStage.PREPARING, 0, collectibles.size)
+            val recordList = collectibles.mapIndexed { index, c ->
                 val filenames = mutableListOf<String>()
                 c.imagePaths.forEach { path ->
                     val src = File(path)
@@ -134,6 +178,7 @@ object BackupManager {
                         filenames.add(uniqueName)
                     }
                 }
+                onProgress(ExportStage.PREPARING, index + 1, collectibles.size)
                 CollectibleRecord(
                     id = c.id, name = c.name, category = c.category, type = c.type,
                     ipName = c.ipName, seriesName = c.seriesName, characterTag = c.characterTag,
@@ -150,32 +195,39 @@ object BackupManager {
             }
 
             val json = buildJson(BACKUP_VERSION, System.currentTimeMillis(), recordList)
+            val imageFiles = backupDir.listFiles().orEmpty()
+            val totalEntries = imageFiles.size + 1
 
             val outputStream = context.contentResolver.openOutputStream(outputUri)
                 ?: throw IOException("Unable to open backup output")
             outputStream.use { outStream ->
                 java.util.zip.ZipOutputStream(BufferedOutputStream(outStream)).use { zos ->
+                    var written = 0
                     zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
                     zos.write(json.toByteArray(Charsets.UTF_8))
                     zos.closeEntry()
+                    onProgress(ExportStage.WRITING, ++written, totalEntries)
 
-                    backupDir.listFiles()?.forEach { file ->
+                    imageFiles.forEach { file ->
                         zos.putNextEntry(java.util.zip.ZipEntry("images/${file.name}"))
                         file.inputStream().use { it.copyTo(zos) }
                         zos.closeEntry()
+                        onProgress(ExportStage.WRITING, ++written, totalEntries)
                     }
                     zos.finish()
                 }
             }
 
+            onProgress(ExportStage.FINALIZING, 0, 1)
             backupDir.deleteRecursively()
+            onProgress(ExportStage.FINALIZING, 1, 1)
             AppLogger.i("Export", "Done: count=${recordList.size}")
-            true
+            Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Export failed", e)
             AppLogger.e("Export", "Failed: ${e.message}", e)
-            try { File(context.cacheDir, "backup_export").deleteRecursively() } catch (_: Exception) {}
-            false
+            try { backupDir.deleteRecursively() } catch (_: Exception) {}
+            Result.failure(e)
         }
     }
 
@@ -233,7 +285,7 @@ object BackupManager {
         inputUri: Uri,
         database: AppDatabase,
         mode: ImportMode,
-        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> }
+        onProgress: (stage: BackupStage, current: Int, total: Int) -> Unit = { _, _, _ -> }
     ): Result<Int> {
         val createdImagePaths = mutableListOf<String>()
         var databaseCommitted = false
@@ -247,6 +299,7 @@ object BackupManager {
             tempDir.mkdirs()
 
             extractZip(context, inputUri, tempDir)
+            onProgress(BackupStage.READING, 1, 1)
 
             val manifestFile = File(tempDir, "manifest.json")
             if (!manifestFile.exists()) {
@@ -257,12 +310,15 @@ object BackupManager {
             if (manifestFile.length() > MAX_MANIFEST_BYTES) throw IOException("Manifest is too large")
             val manifest = parseManifest(manifestFile.readText(Charsets.UTF_8))
             val total = manifest.collectibles.size
+            onProgress(BackupStage.VALIDATING, 1, 1)
 
             // Build fingerprint -> existing entity map for dedup & overwrite lookup.
             val existingByFingerprint = dao.getAllCollectiblesOnce().associateBy { it.fingerprint() }
             Log.d(TAG, "Import: existing in DB=${existingByFingerprint.size}, manifest records=${manifest.collectibles.size}")
 
             val imageMap = mutableMapOf<String, String>()
+            // Images replaced by an OVERWRITE import, deleted once the transaction commits.
+            val replacedImagePaths = mutableListOf<String>()
 
             var importedCount = 0
             var skippedCount = 0
@@ -280,12 +336,20 @@ object BackupManager {
             val filesToCopy = plans.filter { it.third != ImportAction.SKIP }
                 .flatMap { it.first.imageFilenames }
                 .toSet()
-            File(tempDir, "images").listFiles()?.filter { it.name in filesToCopy }?.forEach { file ->
+            val imagesToCopy = File(tempDir, "images").listFiles()
+                ?.filter { it.name in filesToCopy }
+                .orEmpty()
+            imagesToCopy.forEachIndexed { index, file ->
                 val newFileName = "${UUID.randomUUID()}_${file.name}"
                 val newFile = File(imagesDir, newFileName)
                 file.copyTo(newFile, overwrite = false)
+                // Restored images arrive as plain files, so give them the same thumbnail
+                // the capture pipeline produces; otherwise grids would keep decoding the
+                // full-size image until it is edited.
+                ImageUtils.regenerateThumbnail(ImageUtils.baseOfImage(newFile.absolutePath), newFile.absolutePath)
                 imageMap[file.name] = newFile.absolutePath
                 createdImagePaths.add(newFile.absolutePath)
+                onProgress(BackupStage.COPYING_IMAGES, index + 1, imagesToCopy.size)
             }
 
             val updates = mutableListOf<CollectibleEntity>()
@@ -301,6 +365,9 @@ object BackupManager {
                         AppLogger.d("Import", "Skip duplicate: ${record.name}")
                     }
                     ImportAction.OVERWRITE -> {
+                        if (record.imageFilenames.isNotEmpty()) {
+                            replacedImagePaths.addAll(existing!!.imagePaths.split(",").map { it.trim() }.filter { it.isNotEmpty() })
+                        }
                         val updated = existing!!.copy(
                             name = record.name,
                             category = record.category, type = record.type,
@@ -341,23 +408,34 @@ object BackupManager {
                         importedCount++
                     }
                 }
-                onProgress(index + 1, total)
             }
 
+            onProgress(BackupStage.WRITING, 0, 1)
             database.withTransaction {
                 dao.updateCollectibles(updates)
                 dao.insertCollectibles(inserts)
             }
             databaseCommitted = true
+            if (replacedImagePaths.isNotEmpty()) {
+                // The replaced files may still be shared with another collectible, so only
+                // drop the ones nothing references any more.
+                val stillReferenced = dao.getAllCollectiblesOnce()
+                    .flatMap { it.imagePaths.split(",") }
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                ImageUtils.deleteUnreferencedImages(replacedImagePaths, stillReferenced)
+            }
+            onProgress(BackupStage.WRITING, 1, 1)
             Log.d(TAG, "Import done: imported=$importedCount, skipped=$skippedCount, mode=$mode")
             AppLogger.i("Import", "Done: imported=$importedCount, skipped=$skippedCount, mode=$mode, total=$total")
+            onProgress(BackupStage.CLEANUP, 1, 1)
             tempDir.deleteRecursively()
             Result.success(importedCount)
         } catch (e: Exception) {
             Log.e(TAG, "Import failed", e)
             AppLogger.e("Import", "Failed: ${e.message}", e)
             try { File(context.cacheDir, "backup_import").deleteRecursively() } catch (_: Exception) {}
-            if (!databaseCommitted) createdImagePaths.forEach { ImageUtils.deleteImage(it) }
+            if (!databaseCommitted) createdImagePaths.forEach { ImageUtils.deleteImageWithCompanions(it) }
             Result.failure(e)
         }
     }
@@ -365,6 +443,18 @@ object BackupManager {
     private fun extractZip(context: Context, inputUri: Uri, tempDir: File) {
         val input = context.contentResolver.openInputStream(inputUri)
             ?: throw IOException("Unable to open backup input")
+        input.use { extractZip(it, tempDir) }
+    }
+
+    /**
+     * Streams a backup ZIP into [tempDir].
+     *
+     * Rejects anything that could escape [tempDir] (path traversal, absolute
+     * paths, nested paths under images/) as well as anything that could exhaust
+     * disk or memory (too many entries, oversized entries, oversized totals,
+     * absurd compression ratios).
+     */
+    internal fun extractZip(input: InputStream, tempDir: File, limits: ZipLimits = ZipLimits()) {
         var totalBytes = 0L
         var entries = 0
         val seenEntries = mutableSetOf<String>()
@@ -373,7 +463,7 @@ object BackupManager {
                 var entry = zis.nextEntry
                 while (entry != null) {
                     val currentEntry = entry
-                    if (++entries > MAX_ZIP_ENTRIES) throw IOException("Backup contains too many files")
+                    if (++entries > limits.maxEntries) throw IOException("Backup contains too many files")
                     val normalized = currentEntry.name.replace('\\', '/')
                     if (currentEntry.isDirectory) {
                         if (normalized != "images/") throw IOException("Invalid backup path")
@@ -395,11 +485,16 @@ object BackupManager {
                             if (read < 0) break
                             entryBytes += read
                             totalBytes += read
-                            if (entryBytes > MAX_ENTRY_BYTES || totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup is too large")
+                            if (entryBytes > limits.maxEntryBytes || totalBytes > limits.maxTotalBytes) throw IOException("Backup is too large")
                             output.write(buffer, 0, read)
                         }
                     }
-                    if (currentEntry.compressedSize > 0 && entryBytes / currentEntry.compressedSize > 100) throw IOException("Suspicious compression ratio")
+                    // A tiny compressed size for a large entry is the classic zip-bomb
+                    // shape; reject it before writing more to disk.
+                    val compressedSize = currentEntry.compressedSize
+                    if (compressedSize > 0 && entryBytes / compressedSize > limits.maxCompressionRatio) {
+                        throw IOException("Suspicious compression ratio")
+                    }
                     zis.closeEntry()
                     entry = zis.nextEntry
                 }
@@ -407,7 +502,7 @@ object BackupManager {
         }
     }
 
-    private fun isAllowedEntry(name: String): Boolean {
+    internal fun isAllowedEntry(name: String): Boolean {
         if (name.isBlank() || name.indexOf('\u0000') >= 0 || name.startsWith("/") || name.contains(":")) return false
         if (name == "manifest.json") return true
         if (!name.startsWith("images/")) return false

@@ -1,5 +1,8 @@
 package com.goodsbuy.app.util
 
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,10 +19,16 @@ class ImageUtilsPathTest {
     @Before
     fun setUp() {
         tmpDir = Files.createTempDirectory("goodsbuy").toFile()
+        // AppLogger writes through android.util.Log, which is not available in JVM tests.
+        mockkObject(AppLogger)
+        every { AppLogger.e(any(), any(), any()) } returns Unit
+        every { AppLogger.e(any(), any()) } returns Unit
+        every { AppLogger.i(any(), any()) } returns Unit
     }
 
     @After
     fun tearDown() {
+        unmockkAll()
         tmpDir.deleteRecursively()
     }
 
@@ -36,6 +45,43 @@ class ImageUtilsPathTest {
     @Test
     fun `baseOfImage strips jpg extension`() {
         assertEquals("/data/a/abc", ImageUtils.baseOfImage("/data/a/abc.jpg"))
+    }
+
+    @Test
+    fun `baseOfImage strips thumbnail suffixes`() {
+        assertEquals("/data/a/abc", ImageUtils.baseOfImage("/data/a/abc_thumb.jpg"))
+        assertEquals("/data/a/abc", ImageUtils.baseOfImage("/data/a/abc_thumb.png"))
+    }
+
+    @Test
+    fun `thumbnailPathFor prefers the generated thumbnail`() {
+        val base = ImageUtils.baseOfImage(File(tmpDir, "abc.jpg").absolutePath)
+        val original = ImageUtils.originalJpgPath(base)
+        val thumb = "${base}_thumb.jpg"
+        File(original).writeText("orig")
+        File(thumb).writeText("thumb")
+
+        assertEquals(thumb, ImageUtils.thumbnailPathFor(original))
+    }
+
+    @Test
+    fun `thumbnailPathFor falls back to the original when no thumbnail exists`() {
+        val base = ImageUtils.baseOfImage(File(tmpDir, "abc.jpg").absolutePath)
+        val original = ImageUtils.originalJpgPath(base)
+        File(original).writeText("orig")
+
+        assertEquals(original, ImageUtils.thumbnailPathFor(original))
+    }
+
+    @Test
+    fun `thumbnailPathFor resolves the thumbnail of an edited png`() {
+        val base = ImageUtils.baseOfImage(File(tmpDir, "abc.jpg").absolutePath)
+        val edited = ImageUtils.transparentPngPath(base)
+        val thumb = "${base}_thumb.png"
+        File(edited).writeText("png")
+        File(thumb).writeText("thumb")
+
+        assertEquals(thumb, ImageUtils.thumbnailPathFor(edited))
     }
 
     @Test
@@ -73,7 +119,9 @@ class ImageUtilsPathTest {
         val paths = listOf(
             ImageUtils.originalJpgPath(base),
             ImageUtils.origBackupPath(base),
-            ImageUtils.transparentPngPath(base)
+            ImageUtils.transparentPngPath(base),
+            "${base}_thumb.jpg",
+            "${base}_thumb.png"
         )
         paths.forEach { File(it).writeText("x") }
 

@@ -326,7 +326,7 @@ FilledTonalButton(
              NumTextField(
                  value = uiState.expectedPrice,
                  onValueChange = { viewModel.updateField("expectedPrice", it) },
-                 label = "心理预期价",
+                 label = "心理预期价（单价）",
                  placeholder = "例如：7000",
                  isDecimal = true,
                  modifier = Modifier.fillMaxWidth(),

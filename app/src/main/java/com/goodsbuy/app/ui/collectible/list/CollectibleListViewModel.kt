@@ -8,6 +8,7 @@ import com.goodsbuy.app.domain.model.DashboardSummary
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
 import com.goodsbuy.app.domain.usecase.GetDashboardSummaryUseCase
+import com.goodsbuy.app.domain.usecase.UpdateCollectibleStatusUseCase
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.util.CollectibleNameUtils
 import com.goodsbuy.app.util.ImageUtils
@@ -25,6 +26,7 @@ import kotlinx.datetime.toLocalDateTime
 import java.io.File
 import java.text.Collator
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -34,6 +36,7 @@ class CollectibleListViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val undoDeleteManager: UndoDeleteManager,
     private val getDashboardSummary: GetDashboardSummaryUseCase,
+    private val updateStatusUseCase: UpdateCollectibleStatusUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -52,10 +55,10 @@ class CollectibleListViewModel @Inject constructor(
     val uiState: StateFlow<CollectibleListUiState> = combine(
         combine(_searchQuery, _statusFilter, _sortField, _sortAscending) { q, s, f, a -> Quad(q, s, f, a) }
             .flatMapLatest { (query, status, sortField, asc) ->
-                val flow = if (query.isNotBlank()) repository.searchCollectibles(query)
-                else if (status != null) repository.getCollectiblesByStatus(status)
-                else repository.getAllCollectibles()
-                flow.map { list -> sortList(list, sortField, asc) }
+                // Search and status filter are applied together in a single
+                // query; neither silently wins over the other any more.
+                repository.observeCollectibles(query.trim(), status)
+                    .map { list -> sortList(list, sortField, asc) }
                     .map { list ->
                         val summary: DashboardSummary = getDashboardSummary(list)
                         CollectibleListUiState(
@@ -160,7 +163,7 @@ class CollectibleListViewModel @Inject constructor(
                 val src = File(path)
                 if (!src.exists()) return@mapNotNull null
                 val parentDir = src.parentFile ?: return@mapNotNull null
-                val dest = File(parentDir, "${System.currentTimeMillis()}_${src.name}")
+                val dest = File(parentDir, "${UUID.randomUUID()}_${src.name}")
                 try {
                     src.copyTo(dest, overwrite = false)
                     dest.absolutePath
@@ -169,12 +172,13 @@ class CollectibleListViewModel @Inject constructor(
                     null
                 }
             }
+            val timestamp = System.currentTimeMillis()
             val dup = collectible.copy(
                 id = 0L,
                 name = CollectibleNameUtils.buildDuplicateName(collectible.name, ts),
                 imagePaths = newImages,
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                createdAt = timestamp,
+                updatedAt = timestamp
             )
             repository.insertCollectible(dup)
         }
@@ -182,11 +186,7 @@ class CollectibleListViewModel @Inject constructor(
 
     fun quickUpdateStatus(collectible: Collectible, newStatus: OrderStatus) {
         viewModelScope.launch {
-            val updated = collectible.copy(
-                status = newStatus,
-                sellDate = if (newStatus == OrderStatus.SOLD) System.currentTimeMillis() else collectible.sellDate
-            )
-            repository.updateCollectible(updated)
+            updateStatusUseCase(collectible, newStatus)
             AppLogger.i("Status", "Quick update: id=${collectible.id}, name=${collectible.name}, ${collectible.status} -> $newStatus")
         }
     }

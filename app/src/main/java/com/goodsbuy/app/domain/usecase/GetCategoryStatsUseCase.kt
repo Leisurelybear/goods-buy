@@ -16,12 +16,24 @@ class GetCategoryStatsUseCase @Inject constructor() {
                 else -> it.ipName
             }
         }.map { (name, items) ->
-            val investment = items.sumOf { CollectibleAccounting.purchaseTotal(it) }
-            val soldItems = items.filter { it.status == OrderStatus.SOLD }
-            val revenue = soldItems.sumOf { CollectibleAccounting.saleRevenue(it) }
-            val costOfSold = items.filter { CollectibleAccounting.isSettled(it) }
-                .sumOf { CollectibleAccounting.realizedCost(it) }
-            CategoryStat(categoryName = name, count = items.size, investment = investment, revenue = revenue, profit = revenue - costOfSold)
+            // All four figures come from the same shared accounting rules so
+            // 投入 / 成本 / 收入 / 利润率 stay consistent within a category.
+            val grossInvestment = items.sumOf { CollectibleAccounting.purchaseTotal(it) }
+            val settled = items.filter { CollectibleAccounting.isSettled(it) }
+            val realizedCost = settled.sumOf { CollectibleAccounting.realizedCost(it) }
+            val revenue = items.filter { it.status == OrderStatus.SOLD }
+                .sumOf { CollectibleAccounting.saleRevenue(it) }
+            val holdingValue = items.filterNot { CollectibleAccounting.isSettled(it) }
+                .sumOf { it.expectedPrice * CollectibleAccounting.remainingQuantity(it) }
+            CategoryStat(
+                categoryName = name,
+                count = items.size,
+                grossInvestment = grossInvestment,
+                realizedCost = realizedCost,
+                holdingValue = holdingValue,
+                revenue = revenue,
+                profit = revenue - realizedCost
+            )
         }.sortedByDescending { it.profit }
     }
 }

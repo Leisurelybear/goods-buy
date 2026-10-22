@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.ui.theme.LocalAppGradient
 import com.goodsbuy.app.util.formatPrice
@@ -239,8 +240,9 @@ private fun CardImage(
 ) {
     val imagePaths = collectible.imagePaths
     if (!autoRotate || imagePaths.size <= 1) {
+        val path = imagePaths.first()
         AsyncImage(
-            model = imagePaths.first(),
+            model = remember(path) { ImageUtils.thumbnailPathFor(path) },
             contentDescription = collectible.name,
             modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
             contentScale = ContentScale.Crop
@@ -264,7 +266,7 @@ private fun CardImage(
         label = "card_image_rotation"
     ) { path ->
         AsyncImage(
-            model = path,
+            model = remember(path) { ImageUtils.thumbnailPathFor(path) },
             contentDescription = collectible.name,
             modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
             contentScale = ContentScale.Crop

@@ -8,6 +8,7 @@ import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.model.StorageStatus
 import com.goodsbuy.app.domain.repository.CollectibleRepository
+import com.goodsbuy.app.domain.usecase.UpdateCollectibleStatusUseCase
 import com.goodsbuy.app.domain.validation.CollectibleInput
 import com.goodsbuy.app.domain.validation.CollectibleValidator
 import com.goodsbuy.app.util.ImageUtils
@@ -30,7 +31,8 @@ class CollectibleFormViewModel @Inject constructor(
     private val repository: CollectibleRepository,
     @ApplicationContext private val context: Context,
     private val draftStore: CollectibleDraftStore,
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val updateStatusUseCase: UpdateCollectibleStatusUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CollectibleFormUiState())
     val uiState: StateFlow<CollectibleFormUiState> = _uiState.asStateFlow()
@@ -199,12 +201,7 @@ class CollectibleFormViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, saveError = null) }
         viewModelScope.launch {
             try {
-                val sellDate = when {
-                    state.status == OrderStatus.SOLD && state.sellDate == null -> System.currentTimeMillis()
-                    state.status != OrderStatus.SOLD -> null
-                    else -> state.sellDate
-                }
-                val collectible = Collectible(
+                val draft = Collectible(
                     id = state.id ?: 0, name = state.name.trim(), category = state.category.trim(), type = state.type.trim(),
                     ipName = state.ipName.trim(), seriesName = state.seriesName.trim(), characterTag = state.characterTag.trim(),
                     remark = state.remark, purchaseChannel = state.purchaseChannel, purchaseShop = state.purchaseShop,
@@ -212,10 +209,11 @@ class CollectibleFormViewModel @Inject constructor(
                     purchaseShipping = state.purchaseShipping.toDouble(), expectedPrice = state.expectedPrice.toDoubleOrNull() ?: 0.0,
                     sellPrice = state.sellPrice.toDoubleOrNull(), sellQuantity = state.sellQuantity.toIntOrNull(),
                     sellShipping = state.sellShipping.toDoubleOrNull(), isFreeShipping = state.isFreeShipping,
-                    sellDate = sellDate, buyerInfo = state.buyerInfo.ifBlank { null }, sellRemark = state.sellRemark.ifBlank { null },
+                    sellDate = state.sellDate, buyerInfo = state.buyerInfo.ifBlank { null }, sellRemark = state.sellRemark.ifBlank { null },
                     status = state.status, storageStatus = state.storageStatus, imagePaths = state.imagePaths,
                     createdAt = state.createdAt, updatedAt = System.currentTimeMillis()
                 )
+                val collectible = updateStatusUseCase.migrate(draft, state.status)
                 if (state.id != null) repository.updateCollectible(collectible) else repository.insertCollectible(collectible)
                 val currentBases = state.imagePaths.map { ImageUtils.baseOfImage(it) }.toSet()
                 originalImagePaths.forEach { origPath ->

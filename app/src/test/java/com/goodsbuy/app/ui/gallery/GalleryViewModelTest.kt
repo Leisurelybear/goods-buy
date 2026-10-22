@@ -39,12 +39,12 @@ class GalleryViewModelTest {
         override suspend fun getAllCollectiblesOnce(): List<Collectible> = allCollectibles.value
         override suspend fun getCollectibleById(id: Long): Collectible? =
             allCollectibles.value.firstOrNull { it.id == id }
-        override fun getCollectiblesByStatus(status: String): Flow<List<Collectible>> =
-            MutableStateFlow(allCollectibles.value.filter { it.status.name == status })
-        override fun searchCollectibles(query: String): Flow<List<Collectible>> =
-            MutableStateFlow(allCollectibles.value.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                    it.ipName.contains(query, ignoreCase = true)
+        override fun observeCollectibles(query: String, status: String?): Flow<List<Collectible>> =
+            MutableStateFlow(allCollectibles.value.filter { collectible ->
+                (status == null || collectible.status.name == status) &&
+                    (query.isBlank() ||
+                        collectible.name.contains(query, ignoreCase = true) ||
+                        collectible.ipName.contains(query, ignoreCase = true))
             })
         override suspend fun insertCollectible(collectible: Collectible): Long {
             inserted = collectible
@@ -157,15 +157,16 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `quickUpdateStatus keeps existing sellDate for non-sold status`() = runTest(testDispatcher) {
-        val item = collectible(1, status = OrderStatus.LISTED, sellDate = 123456L)
+    fun `quickUpdateStatus clears sellDate when leaving sold`() = runTest(testDispatcher) {
+        val item = collectible(1, status = OrderStatus.SOLD, sellDate = 123456L)
 
         viewModel.quickUpdateStatus(item, OrderStatus.LISTED)
         advanceUntilIdle()
 
         val updated = repository.updated
         assertNotNull(updated)
-        assertEquals(123456L, updated!!.sellDate)
+        assertEquals(OrderStatus.LISTED, updated!!.status)
+        assertNull(updated.sellDate)
     }
 
     @Test

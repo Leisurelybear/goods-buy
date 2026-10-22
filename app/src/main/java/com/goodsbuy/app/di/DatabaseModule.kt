@@ -18,7 +18,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "grain_cabinet.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "grain_cabinet.db")
+            .addMigrations(*AppDatabase.MIGRATIONS)
+            .build()
 
     @Provides
     @Singleton
