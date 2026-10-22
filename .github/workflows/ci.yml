@@ -40,10 +40,35 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Lint, unit test and assemble debug
-        run: ./gradlew lintDebug testDebugUnitTest assembleDebug --console=plain
+        id: gate
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew lintDebug testDebugUnitTest assembleDebug --console=plain 2>&1 | tee "$RUNNER_TEMP/gradle-ci.log"
         timeout-minutes: 30
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+      # The Actions log endpoint needs authentication, so on failure republish the
+      # tail through the step summary and a check annotation, both of which are
+      # readable for public repositories.
+      - name: Publish failure tail
+        if: failure() && steps.gate.outcome == 'failure'
+        shell: bash
+        run: |
+          LOG="$RUNNER_TEMP/gradle-ci.log"
+          if [ ! -f "$LOG" ]; then
+            echo "no gradle log captured"
+            exit 0
+          fi
+          {
+            echo '### Gradle failure tail'
+            echo '```text'
+            tail -n 120 "$LOG"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          TAIL=$(tail -n 30 "$LOG" | sed -e 's/%/%25/g' -e 's/\r$//' | awk 'NR>1{printf "%0A"} {printf "%s", $0}')
+          echo "::error title=Gradle failure tail::${TAIL}"
 
       - name: Upload lint report
         if: always()
