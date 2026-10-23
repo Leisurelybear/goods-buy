@@ -31,3 +31,30 @@ val pressScaleSpring: FiniteAnimationSpec<Float> = spring(
 
 val enterEasing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 val exitEasing = CubicBezierEasing(0.7f, 0f, 0.84f, 0f)
+
+/* ------------------------------------------------------------------------------------------------
+ * v1.5 动画增强新增规格：统一"回弹 / 揭示 / 呼吸 / 导航"的时序，避免各页面各写一套魔法数字。
+ * ---------------------------------------------------------------------------------------------- */
+
+/** 数字/胶囊变化时的"弹一下"回弹。 */
+val popSpec: FiniteAnimationSpec<Float> = spring(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMedium
+)
+
+/** 列表项依次揭示（stagger）时使用，略带过冲，更有"活过来"的感觉。 */
+val revealSpring: FiniteAnimationSpec<Float> = spring(
+    dampingRatio = Spring.DampingRatioLowBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
+
+/** 呼吸/脉动等无限循环动画的单个周期。 */
+val pulseSpec: FiniteAnimationSpec<Float> = tween(2400, easing = FastOutSlowInEasing)
+
+/** 底部 Tab 之间切换：轻缩放 + 淡入淡出（shared axis 的简化版）。 */
+val tabEnterSpec: FiniteAnimationSpec<Float> = tween(240, easing = enterEasing)
+val tabExitSpec: FiniteAnimationSpec<Float> = tween(160, easing = exitEasing)
+
+/** 二级页面（详情/表单/图鉴）推入与退出。 */
+val pageEnterSpec: FiniteAnimationSpec<Float> = tween(280, easing = enterEasing)
+val pageExitSpec: FiniteAnimationSpec<Float> = tween(220, easing = exitEasing)
