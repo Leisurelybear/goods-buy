@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -46,6 +46,7 @@ import com.goodsbuy.app.ui.collectible.list.LongPressMenuState
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
 import com.goodsbuy.app.ui.components.SearchBar
+import com.goodsbuy.app.ui.components.StaggeredReveal
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.theme.LocalAppGradient
 
@@ -186,20 +187,26 @@ fun GalleryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(selectedGroup.collectibles, key = { it.id }) { collectible ->
-                        CollectibleCard(
-                            collectible = collectible,
-                            onClick = { onNavigateToDetail(collectible.id) },
-                            showName = prefs.showName,
-                            showPrice = prefs.showPrice,
-                            showStatus = prefs.showStatus,
-                            fontSize = prefs.fontSize,
-                            onLongPress = { menuState = LongPressMenuState(collectible) },
-                            isSelected = false,
-                            onSelect = null,
-                            batchMode = false,
+                    itemsIndexed(selectedGroup.collectibles, key = { _, item -> item.id }) { index, collectible ->
+                        StaggeredReveal(
+                            index = index,
+                            key = collectible.id,
                             modifier = Modifier.fillMaxWidth().animateItemPlacement(tween(250))
-                        )
+                        ) {
+                            CollectibleCard(
+                                collectible = collectible,
+                                onClick = { onNavigateToDetail(collectible.id) },
+                                showName = prefs.showName,
+                                showPrice = prefs.showPrice,
+                                showStatus = prefs.showStatus,
+                                fontSize = prefs.fontSize,
+                                onLongPress = { menuState = LongPressMenuState(collectible) },
+                                isSelected = false,
+                                onSelect = null,
+                                batchMode = false,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             } else {
@@ -268,20 +275,25 @@ fun GalleryScreen(
                                         contentPadding = PaddingValues(horizontal = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(group.collectibles, key = { it.id }) { collectible ->
-                                            CollectibleCard(
-                                                collectible = collectible,
-                                                onClick = { onNavigateToDetail(collectible.id) },
-                                                showName = prefs.showName,
-                                                showPrice = prefs.showPrice,
-                                                showStatus = prefs.showStatus,
-                                                fontSize = prefs.fontSize,
-                                                onLongPress = { menuState = LongPressMenuState(collectible) },
-                                                isSelected = false,
-                                                onSelect = null,
-                                                batchMode = false,
-                                                modifier = Modifier.width(prefs.cardSize.dp)
-                                            )
+                                        itemsIndexed(group.collectibles, key = { _, item -> item.id }) { index, collectible ->
+                                            StaggeredReveal(
+                                                index = index,
+                                                key = collectible.id
+                                            ) {
+                                                CollectibleCard(
+                                                    collectible = collectible,
+                                                    onClick = { onNavigateToDetail(collectible.id) },
+                                                    showName = prefs.showName,
+                                                    showPrice = prefs.showPrice,
+                                                    showStatus = prefs.showStatus,
+                                                    fontSize = prefs.fontSize,
+                                                    onLongPress = { menuState = LongPressMenuState(collectible) },
+                                                    isSelected = false,
+                                                    onSelect = null,
+                                                    batchMode = false,
+                                                    modifier = Modifier.width(prefs.cardSize.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }

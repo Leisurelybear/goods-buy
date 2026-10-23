@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 
 /**
- * 看板/统计数字：加粗、等宽数字（tnum）、带滚动计数动画。
+ * 看板/统计数字：加粗、等宽数字（tnum）、带滚动计数与变化回弹动画。
  * 默认 ¥ 前缀；渐变卡上文字统一用 [MaterialTheme.colorScheme.onPrimary] 以保证对比度。
  */
 @Composable
@@ -18,7 +18,9 @@ fun StatNumber(
     color: Color = MaterialTheme.colorScheme.onPrimary,
     decimals: Int = 0,
     prefix: String = "\u00a5",
-    suffix: String = ""
+    suffix: String = "",
+    showSign: Boolean = false,
+    popOnChange: Boolean = true
 ) {
     val tabular = style.copy(fontFeatureSettings = "tnum")
     AnimatedNumber(
@@ -28,6 +30,8 @@ fun StatNumber(
         color = color,
         decimals = decimals,
         prefix = prefix,
-        suffix = suffix
+        suffix = suffix,
+        showSign = showSign,
+        popOnChange = popOnChange
     )
 }

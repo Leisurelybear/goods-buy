@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,6 +40,7 @@ import com.goodsbuy.app.ui.components.AppFAB
 import com.goodsbuy.app.ui.components.CollectibleCard
 import com.goodsbuy.app.ui.components.EmptyState
 import com.goodsbuy.app.ui.components.SearchBar
+import com.goodsbuy.app.ui.components.StaggeredReveal
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 
 @OptIn(
@@ -285,22 +286,28 @@ fun CollectibleListScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.collectibles, key = { it.id }) { collectible ->
-                            CollectibleCard(
-                                collectible = collectible,
-                                onClick = { onNavigateToDetail(collectible.id) },
-                                showName = prefs.showName,
-                                showPrice = prefs.showPrice,
-                                showStatus = prefs.showStatus,
-                                fontSize = prefs.fontSize,
-                                homeImageAutoRotate = prefs.homeImageAutoRotate,
-                                homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds,
-                                onLongPress = { if (!uiState.isBatchMode) viewModel.showLongPressMenu(collectible) },
-                                isSelected = uiState.selectedIds.contains(collectible.id),
-                                onSelect = { viewModel.toggleSelect(collectible.id) },
-                                batchMode = uiState.isBatchMode,
+                        itemsIndexed(uiState.collectibles, key = { _, item -> item.id }) { index, collectible ->
+                            StaggeredReveal(
+                                index = index,
+                                key = collectible.id,
                                 modifier = Modifier.fillMaxWidth().animateItemPlacement(tween(250))
-                            )
+                            ) {
+                                CollectibleCard(
+                                    collectible = collectible,
+                                    onClick = { onNavigateToDetail(collectible.id) },
+                                    showName = prefs.showName,
+                                    showPrice = prefs.showPrice,
+                                    showStatus = prefs.showStatus,
+                                    fontSize = prefs.fontSize,
+                                    homeImageAutoRotate = prefs.homeImageAutoRotate,
+                                    homeImageRotationIntervalSeconds = prefs.homeImageRotationIntervalSeconds,
+                                    onLongPress = { if (!uiState.isBatchMode) viewModel.showLongPressMenu(collectible) },
+                                    isSelected = uiState.selectedIds.contains(collectible.id),
+                                    onSelect = { viewModel.toggleSelect(collectible.id) },
+                                    batchMode = uiState.isBatchMode,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }

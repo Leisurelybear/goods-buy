@@ -2,12 +2,15 @@ package com.goodsbuy.app.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,15 +43,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.goodsbuy.app.util.ImageUtils
 import com.goodsbuy.app.domain.model.Collectible
 import com.goodsbuy.app.ui.theme.LocalAppGradient
@@ -75,10 +76,13 @@ fun CollectibleCard(
     val nameSize = when (fontSize) { 0 -> 11f; 1 -> 12f; else -> 14f }
     val priceSize = when (fontSize) { 0 -> 9f; 1 -> 10f; else -> 12f }
 
-    val scale by animateFloatAsState(
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = rememberPressScale(interactionSource, pressedScale = 0.95f)
+
+    val selectionScale by animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
         animationSpec = pressScaleSpring,
-        label = "card_scale"
+        label = "card_selection_scale"
     )
 
     val selectionAlpha by animateFloatAsState(
@@ -87,16 +91,32 @@ fun CollectibleCard(
         label = "card_selection"
     )
 
+    val checkScale by animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0.3f,
+        animationSpec = pressScaleSpring,
+        label = "card_check_scale"
+    )
+
     val gradient = LocalAppGradient.current
     val cardCorner = MaterialTheme.shapes.medium
+    val selectionBrush = remember(gradient) {
+        Brush.linearGradient(listOf(gradient.start, gradient.end))
+    }
 
     Card(
         modifier = modifier
             .aspectRatio(0.75f)
-            .scale(scale)
+            .graphicsLayer {
+                val combined = pressScale * selectionScale
+                scaleX = combined
+                scaleY = combined
+            }
             .clip(cardCorner)
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .animatedBorder(visible = isSelected, shape = cardCorner, brush = selectionBrush)
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
                 onClick = { if (batchMode) onSelect?.invoke() else onClick() },
                 onLongClick = { if (onLongPress != null) onLongPress() },
                 enabled = !batchMode || onSelect != null
@@ -153,7 +173,12 @@ fun CollectibleCard(
                             Icons.Default.CheckCircle,
                             contentDescription = "已选中",
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = selectionAlpha),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier
+                                .size(22.dp)
+                                .graphicsLayer {
+                                    scaleX = checkScale
+                                    scaleY = checkScale
+                                }
                         )
                     }
                 }
@@ -239,13 +264,16 @@ private fun CardImage(
     rotationIntervalSeconds: Int
 ) {
     val imagePaths = collectible.imagePaths
+    val imageShape = MaterialTheme.shapes.medium
+    val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
     if (!autoRotate || imagePaths.size <= 1) {
         val path = imagePaths.first()
-        AsyncImage(
+        AppAsyncImage(
             model = remember(path) { ImageUtils.thumbnailPathFor(path) },
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
-            contentScale = ContentScale.Crop
+            modifier = Modifier.fillMaxSize(),
+            shape = imageShape,
+            placeholderColor = placeholderColor
         )
         return
     }
@@ -262,14 +290,15 @@ private fun CardImage(
 
     AnimatedContent(
         targetState = imagePaths[imageIndex],
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        transitionSpec = { fadeIn(tween(320)) togetherWith fadeOut(tween(320)) },
         label = "card_image_rotation"
     ) { path ->
-        AsyncImage(
+        AppAsyncImage(
             model = remember(path) { ImageUtils.thumbnailPathFor(path) },
             contentDescription = collectible.name,
-            modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
-            contentScale = ContentScale.Crop
+            modifier = Modifier.fillMaxSize(),
+            shape = imageShape,
+            placeholderColor = placeholderColor
         )
     }
 }
