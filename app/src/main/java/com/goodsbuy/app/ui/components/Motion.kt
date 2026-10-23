@@ -58,9 +58,10 @@ fun rememberPressScale(
     pressedScale: Float = 0.96f,
     enabled: Boolean = true
 ): Float {
+    val motionEnabled = LocalMotionEnabled.current
     val pressed by interactionSource.collectIsPressedAsState()
     return animateFloatAsState(
-        targetValue = if (pressed && enabled) pressedScale else 1f,
+        targetValue = if (pressed && enabled && motionEnabled) pressedScale else 1f,
         animationSpec = pressScaleSpring,
         label = "press_scale"
     ).value
@@ -100,27 +101,37 @@ fun Modifier.shimmerBackground(
     highlightColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     durationMillis: Int = 1_200
 ): Modifier {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer_progress"
-    )
+    val motionEnabled = LocalMotionEnabled.current
+    val progress = if (motionEnabled) {
+        val transition = rememberInfiniteTransition(label = "shimmer")
+        val animated by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "shimmer_progress"
+        )
+        animated
+    } else {
+        0f
+    }
     return this
         .clip(shape)
         .drawWithCache {
-            val sweepWidth = size.width.coerceAtLeast(1f) * 0.65f
-            val startX = -sweepWidth + progress * (size.width + sweepWidth * 2f)
-            val brush = Brush.linearGradient(
-                colors = listOf(baseColor, highlightColor, baseColor),
-                start = Offset(startX, 0f),
-                end = Offset(startX + sweepWidth, size.height.coerceAtLeast(1f))
-            )
-            onDrawBehind { drawRect(brush) }
+            if (!motionEnabled) {
+                onDrawBehind { drawRect(baseColor) }
+            } else {
+                val sweepWidth = size.width.coerceAtLeast(1f) * 0.65f
+                val startX = -sweepWidth + progress * (size.width + sweepWidth * 2f)
+                val brush = Brush.linearGradient(
+                    colors = listOf(baseColor, highlightColor, baseColor),
+                    start = Offset(startX, 0f),
+                    end = Offset(startX + sweepWidth, size.height.coerceAtLeast(1f))
+                )
+                onDrawBehind { drawRect(brush) }
+            }
         }
 }
 
@@ -133,16 +144,22 @@ fun Modifier.auroraGradient(
     colors: List<Color>,
     durationMillis: Int = 14_000
 ): Modifier {
-    val transition = rememberInfiniteTransition(label = "aurora")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "aurora_phase"
-    )
+    val motionEnabled = LocalMotionEnabled.current
+    val phase = if (motionEnabled) {
+        val transition = rememberInfiniteTransition(label = "aurora")
+        val animated by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "aurora_phase"
+        )
+        animated
+    } else {
+        0.5f
+    }
     return this.drawWithCache {
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
@@ -188,8 +205,13 @@ fun StaggeredReveal(
     slideFrom: Dp = 24.dp,
     content: @Composable () -> Unit
 ) {
-    var revealed by remember(key) { mutableStateOf(false) }
-    LaunchedEffect(key) {
+    val motionEnabled = LocalMotionEnabled.current
+    var revealed by remember(key) { mutableStateOf(!motionEnabled) }
+    LaunchedEffect(key, motionEnabled) {
+        if (!motionEnabled) {
+            revealed = true
+            return@LaunchedEffect
+        }
         delay(index.coerceAtLeast(0).times(stepMillis).coerceAtMost(maxDelayMillis).toLong())
         revealed = true
     }
@@ -224,6 +246,7 @@ fun rememberBreathingScale(
     maxScale: Float = 1.04f,
     durationMillis: Int = 2_400
 ): Float {
+    if (!LocalMotionEnabled.current) return minScale
     val transition = rememberInfiniteTransition(label = "breathing")
     val scale by transition.animateFloat(
         initialValue = minScale,

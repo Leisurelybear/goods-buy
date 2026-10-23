@@ -33,10 +33,11 @@ fun AppAsyncImage(
     placeholderColor: Color? = null
 ) {
     val context = LocalContext.current
-    val request = remember(model) {
+    val motionEnabled = LocalMotionEnabled.current
+    val request = remember(model, motionEnabled) {
         ImageRequest.Builder(context)
             .data(model)
-            .crossfade(220)
+            .crossfade(if (motionEnabled) 220 else 0)
             .build()
     }
     var loading by remember(model) { mutableStateOf(true) }

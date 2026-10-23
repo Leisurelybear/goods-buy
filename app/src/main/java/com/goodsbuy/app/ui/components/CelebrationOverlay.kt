@@ -49,7 +49,7 @@ fun CelebrationOverlay(
     originX: Float = 0.5f,
     originY: Float = 0.45f
 ) {
-    if (!visible) return
+    if (!visible || !LocalMotionEnabled.current) return
 
     val brand = LocalAppGradient.current
     val scheme = MaterialTheme.colorScheme

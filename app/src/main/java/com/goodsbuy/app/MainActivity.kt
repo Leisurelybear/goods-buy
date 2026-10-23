@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.goodsbuy.app.ui.components.LocalMotionEnabled
+import com.goodsbuy.app.ui.components.rememberSystemAnimationsEnabled
 import com.goodsbuy.app.ui.navigation.NavGraph
 import com.goodsbuy.app.ui.navigation.Screen
 import com.goodsbuy.app.ui.theme.AppThemes
@@ -45,8 +47,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val themeId = preferencesRepository.preferencesState.value.themeId
-            GoodsBuyTheme(theme = AppThemes.byId(themeId)) {
-                MainScreen(preferencesRepository)
+            // 系统关闭动画时自动降级：所有装饰性动效直接落到终态
+            CompositionLocalProvider(
+                LocalMotionEnabled provides rememberSystemAnimationsEnabled()
+            ) {
+                GoodsBuyTheme(theme = AppThemes.byId(themeId)) {
+                    MainScreen(preferencesRepository)
+                }
             }
         }
     }

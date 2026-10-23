@@ -1,6 +1,8 @@
 package com.goodsbuy.app.ui.collectible.form
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.goodsbuy.app.ui.components.LocalMotionEnabled
 import com.goodsbuy.app.ui.components.exitEasing
 import com.goodsbuy.app.ui.components.fadeAnimSpec
 import com.goodsbuy.app.ui.components.revealSpring
@@ -68,6 +71,7 @@ fun EdgeFadeEditScreen(
     val uiState by viewModel.uiState.collectAsState()
     val preview by viewModel.previewBitmap.collectAsState()
     val canReset by viewModel.canReset.collectAsState()
+    val motionEnabled = LocalMotionEnabled.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -126,9 +130,13 @@ fun EdgeFadeEditScreen(
                 AnimatedContent(
                     targetState = preview,
                     transitionSpec = {
-                        (fadeIn(fadeAnimSpec) +
-                            scaleIn(initialScale = 0.94f, animationSpec = revealSpring)) togetherWith
-                            fadeOut(tween(150, easing = exitEasing))
+                        if (motionEnabled) {
+                            (fadeIn(fadeAnimSpec) +
+                                scaleIn(initialScale = 0.94f, animationSpec = revealSpring)) togetherWith
+                                fadeOut(tween(150, easing = exitEasing))
+                        } else {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        }
                     },
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
