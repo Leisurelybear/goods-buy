@@ -37,8 +37,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
+import com.goodsbuy.app.ui.components.AppAsyncImage
+import com.goodsbuy.app.ui.components.CelebrationOverlay
 import com.goodsbuy.app.ui.components.SectionHeader
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,6 +54,7 @@ fun CollectibleFormScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDraftSaved by remember { mutableStateOf(false) }
+    var celebrate by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.draftSavedAt) {
         if (uiState.draftSavedAt > 0L) {
@@ -106,6 +108,9 @@ var editingImageIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
+            // 先放一小段礼花再返回，让"保存成功"这件事有仪式感。
+            celebrate = true
+            delay(650)
             onNavigateBack()
         }
     }
@@ -226,12 +231,12 @@ FilledTonalButton(
                          androidx.compose.foundation.layout.Box(
                              modifier = Modifier.clickable { editingImageIndex = index }
                          ) {
-                             AsyncImage(
-                                 model = path,
-                                 contentDescription = null,
-                                 modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.small),
-                                 contentScale = ContentScale.Crop
-                             )
+                                                 AppAsyncImage(
+                                model = path,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                shape = MaterialTheme.shapes.small
+                            )
                              IconButton(
                                  onClick = { viewModel.removeImagePath(index) },
                                  modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(24.dp)
@@ -495,6 +500,12 @@ FilledTonalButton(
             }
         }
     }
+    CelebrationOverlay(
+        visible = celebrate,
+        durationMillis = 650,
+        originX = 0.5f,
+        originY = 0.4f
+    )
     }
 }
 

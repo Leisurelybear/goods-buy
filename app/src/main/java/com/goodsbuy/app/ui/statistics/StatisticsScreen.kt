@@ -1,21 +1,27 @@
 package com.goodsbuy.app.ui.statistics
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +34,9 @@ import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.ProfitLossText
 import com.goodsbuy.app.ui.components.SectionHeader
 import com.goodsbuy.app.ui.components.StatNumber
+import com.goodsbuy.app.ui.components.StaggeredReveal
+import com.goodsbuy.app.ui.components.chartDrawSpec
+import com.goodsbuy.app.ui.theme.LocalAppGradient
 import com.goodsbuy.app.ui.theme.LossRed
 import com.goodsbuy.app.ui.theme.ProfitGreen
 
@@ -40,6 +49,8 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
     LaunchedEffect(selectedStatus) {
         viewModel.changeStatusFilter(selectedStatus)
     }
+
+    val categoryTotalInvestment = uiState.categoryStats.sumOf { it.grossInvestment }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -54,16 +65,12 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Column {
                         Text("累计盈亏", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f))
-                        Text(
-                            text = buildString {
-                                if (uiState.summary.totalProfit >= 0) append("+")
-                                append("\u00a5")
-                                append(String.format("%.0f", uiState.summary.totalProfit))
-                            },
-                            style = MaterialTheme.typography.displaySmall,
+                        StatNumber(
+                            value = uiState.summary.totalProfit,
+                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
+                            decimals = 0,
+                            showSign = true
                         )
                     }
                 }
@@ -75,19 +82,23 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GradientCard(
-                    modifier = Modifier.weight(1f),
-                    gradient = listOf(Color(0xFFFF8FAB), Color(0xFFFFB3D9))
-                ) {
-                    Text("总投入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
-                    StatNumber(value = uiState.summary.totalInvestment, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                StaggeredReveal(index = 0, modifier = Modifier.weight(1f)) {
+                    GradientCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        gradient = listOf(Color(0xFFFF8FAB), Color(0xFFFFB3D9))
+                    ) {
+                        Text("总投入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                        StatNumber(value = uiState.summary.totalInvestment, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                    }
                 }
-                GradientCard(
-                    modifier = Modifier.weight(1f),
-                    gradient = listOf(Color(0xFFB388FF), Color(0xFF9B5CFF))
-                ) {
-                    Text("总营收", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
-                    StatNumber(value = uiState.summary.totalRevenue, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                StaggeredReveal(index = 1, modifier = Modifier.weight(1f)) {
+                    GradientCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        gradient = listOf(Color(0xFFB388FF), Color(0xFF9B5CFF))
+                    ) {
+                        Text("总营收", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                        StatNumber(value = uiState.summary.totalRevenue, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                    }
                 }
             }
         }
@@ -97,19 +108,23 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GradientCard(
-                    modifier = Modifier.weight(1f),
-                    gradient = listOf(ProfitGreen, Color(0xFF66BB6A))
-                ) {
-                    Text("累计盈亏", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
-                    StatNumber(value = uiState.summary.totalProfit, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                StaggeredReveal(index = 2, modifier = Modifier.weight(1f)) {
+                    GradientCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        gradient = listOf(ProfitGreen, Color(0xFF66BB6A))
+                    ) {
+                        Text("累计盈亏", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                        StatNumber(value = uiState.summary.totalProfit, color = MaterialTheme.colorScheme.onPrimary, decimals = 0, showSign = true)
+                    }
                 }
-                GradientCard(
-                    modifier = Modifier.weight(1f),
-                    gradient = listOf(Color(0xFF42A5F5), Color(0xFF5C6BC0))
-                ) {
-                    Text("持仓市值", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
-                    StatNumber(value = uiState.summary.holdingValue, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                StaggeredReveal(index = 3, modifier = Modifier.weight(1f)) {
+                    GradientCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        gradient = listOf(Color(0xFF42A5F5), Color(0xFF5C6BC0))
+                    ) {
+                        Text("持仓市值", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                        StatNumber(value = uiState.summary.holdingValue, color = MaterialTheme.colorScheme.onPrimary, decimals = 0)
+                    }
                 }
             }
         }
@@ -194,40 +209,86 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
             }
         }
 
-        items(uiState.categoryStats, key = { it.categoryName }) { stat ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(stat.categoryName, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "${stat.count}件 · 购入\u00a5${String.format("%.0f", stat.grossInvestment)} · 已结算\u00a5${String.format("%.0f", stat.realizedCost)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (stat.holdingValue > 0) {
-                            Text(
-                                "持仓\u00a5${String.format("%.0f", stat.holdingValue)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+        itemsIndexed(uiState.categoryStats, key = { _, stat -> stat.categoryName }) { index, stat ->
+            StaggeredReveal(index = index, key = stat.categoryName) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(stat.categoryName, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "${stat.count}件 · 购入\u00a5${String.format("%.0f", stat.grossInvestment)} · 已结算\u00a5${String.format("%.0f", stat.realizedCost)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (stat.holdingValue > 0) {
+                                    Text(
+                                        "持仓\u00a5${String.format("%.0f", stat.holdingValue)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            ProfitLossText(
+                                profitLoss = ProfitLoss(
+                                    stat.realizedCost,
+                                    stat.revenue,
+                                    stat.profit,
+                                    if (stat.realizedCost > 0) (stat.profit / stat.realizedCost) * 100 else 0.0
+                                )
                             )
                         }
-                    }
-                    ProfitLossText(
-                        profitLoss = ProfitLoss(
-                            stat.realizedCost,
-                            stat.revenue,
-                            stat.profit,
-                            if (stat.realizedCost > 0) (stat.profit / stat.realizedCost) * 100 else 0.0
+                        Spacer(modifier = Modifier.height(10.dp))
+                        CategoryShareBar(
+                            fraction = if (categoryTotalInvestment > 0) {
+                                (stat.grossInvestment / categoryTotalInvestment).toFloat()
+                            } else {
+                                0f
+                            }
                         )
-                    )
+                    }
                 }
             }
         }
 
         item { Spacer(Modifier.height(32.dp)) }
+    }
+}
+
+/** 分类"投入占比"进度条：从 0 长到目标比例，让分类之间的量级差一眼可见。 */
+@Composable
+private fun CategoryShareBar(fraction: Float) {
+    val gradient = LocalAppGradient.current
+    val target = fraction.coerceIn(0f, 1f)
+    val animatedFraction by animateFloatAsState(
+        targetValue = target,
+        animationSpec = chartDrawSpec,
+        label = "category_share"
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "占投入 ${String.format("%.1f", target * 100)}%",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedFraction)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Brush.horizontalGradient(listOf(gradient.start, gradient.end)))
+            )
+        }
     }
 }

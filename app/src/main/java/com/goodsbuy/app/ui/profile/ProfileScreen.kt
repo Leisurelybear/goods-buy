@@ -4,6 +4,14 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.FileProvider
 import com.goodsbuy.app.BuildConfig
 import com.goodsbuy.app.ui.backup.ImportPreviewScreen
+import com.goodsbuy.app.ui.components.CelebrationOverlay
 import com.goodsbuy.app.ui.components.HeroHeader
 import com.goodsbuy.app.ui.components.ListRowItem
 import com.goodsbuy.app.ui.components.SectionHeader
@@ -31,6 +40,7 @@ import com.goodsbuy.app.ui.preferences.GridPreferences
 import com.goodsbuy.app.ui.preferences.PreferencesRepository
 import com.goodsbuy.app.ui.theme.AppThemes
 import com.goodsbuy.app.util.AppLogger
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +56,16 @@ fun ProfileScreen(
     var showDrafts by remember { mutableStateOf(false) }
     var showDeleteLogsDialog by remember { mutableStateOf(false) }
     var prefs by remember { mutableStateOf(preferencesRepository.preferencesState.value) }
+    var celebrate by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 导入成功后播放一次礼花，随后自动收起。
+    LaunchedEffect(celebrate) {
+        if (celebrate) {
+            delay(1_400)
+            celebrate = false
+        }
+    }
 
     LaunchedEffect(preferencesRepository) {
         prefs = preferencesRepository.preferencesState.value
@@ -93,6 +112,7 @@ fun ProfileScreen(
         val runImport: () -> Unit = {
             scope.launch {
                 viewModel.confirmImport { count ->
+                    celebrate = true
                     snackbarHostState.showSnackbar("成功导入 $count 条藏品")
                 }
             }
@@ -112,6 +132,12 @@ fun ProfileScreen(
         return
     }
 
+    val currentSection = when {
+        showSettings -> ProfileSection.SETTINGS
+        showDrafts -> ProfileSection.DRAFTS
+        else -> ProfileSection.HOME
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -127,99 +153,122 @@ fun ProfileScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (showSettings) {
-                SettingsContent(
-                    prefs = prefs,
-                    onPrefsChange = { prefs = it; preferencesRepository.save(it) },
-                    onDeleteLogsRequest = { showDeleteLogsDialog = true }
-                )
-            } else if (showDrafts) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (drafts.isEmpty()) {
-                            Text("暂无草稿", style = MaterialTheme.typography.bodyLarge)
-                            Text("在添加或编辑藏品时离开页面，内容会自动保存在这里。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else {
-                            drafts.forEach { draft ->
-                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(draft.name, style = MaterialTheme.typography.bodyLarge)
-                                        Text(if (draft.id == null) "新藏品草稿" else "编辑藏品草稿", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // 主页 / 草稿箱 / 设置 三个层级用左右滑入滑出切换，方向跟随前进/返回。
+        AnimatedContent(
+            targetState = currentSection,
+            transitionSpec = {
+                val forward = targetState.ordinal > initialState.ordinal
+                val enter = slideInHorizontally(tween(260, easing = FastOutSlowInEasing)) {
+                    if (forward) it / 3 else -it / 3
+                } + fadeIn(tween(260))
+                val exit = slideOutHorizontally(tween(200, easing = FastOutSlowInEasing)) {
+                    if (forward) -it / 3 else it / 3
+                } + fadeOut(tween(200))
+                enter togetherWith exit
+            },
+            label = "profile_section",
+            modifier = Modifier.fillMaxSize()
+        ) { section ->
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                when (section) {
+                    ProfileSection.SETTINGS -> SettingsContent(
+                        prefs = prefs,
+                        onPrefsChange = { prefs = it; preferencesRepository.save(it) },
+                        onDeleteLogsRequest = { showDeleteLogsDialog = true }
+                    )
+                    ProfileSection.DRAFTS -> Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (drafts.isEmpty()) {
+                                Text("暂无草稿", style = MaterialTheme.typography.bodyLarge)
+                                Text("在添加或编辑藏品时离开页面，内容会自动保存在这里。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else {
+                                drafts.forEach { draft ->
+                                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+                                            Text(if (draft.id == null) "新藏品草稿" else "编辑藏品草稿", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        TextButton(onClick = { onNavigateToForm(draft.id) }) { Text("继续编辑") }
+                                        IconButton(onClick = { viewModel.deleteDraft(draft.key) }) {
+                                            Icon(Icons.Default.Close, contentDescription = "删除草稿")
+                                        }
                                     }
-                                    TextButton(onClick = { onNavigateToForm(draft.id) }) { Text("继续编辑") }
-                                    IconButton(onClick = { viewModel.deleteDraft(draft.key) }) {
-                                        Icon(Icons.Default.Close, contentDescription = "删除草稿")
-                                    }
+                                    if (draft != drafts.last()) HorizontalDivider()
                                 }
-                                if (draft != drafts.last()) HorizontalDivider()
                             }
                         }
                     }
-                }
-            } else {
-                // Main profile screen
-                HeroHeader(
-                    title = "我的",
-                    subtitle = "谷的拜 · v${BuildConfig.VERSION_NAME}"
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                        ListRowItem(
-                            title = "设置",
-                            subtitle = "外观 · 首页 · 图鉴 · 日志",
-                            trailing = {
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            onClick = { showSettings = true }
-                        )
-                        HorizontalDivider()
-                        ListRowItem(
-                            title = "草稿箱",
-                            subtitle = "${drafts.size} 条未完成草稿",
-                            onClick = { showDrafts = true; viewModel.refreshDrafts() }
-                        )
-                        HorizontalDivider()
-                        ListRowItem(
-                            title = "导出备份",
-                            subtitle = "导出所有藏品及图片",
-                            onClick = {
-                                val fileName = "谷的拜备份_${System.currentTimeMillis()}.zip"
-                                exportLauncher.launch(fileName)
-                            }
-                        )
-                        HorizontalDivider()
-                        ListRowItem(
-                            title = "导入备份",
-                            subtitle = "从ZIP文件恢复数据",
-                            onClick = { importLauncher.launch("application/zip") }
-                        )
-                        if (!prefs.galleryEntryHome) {
+                    ProfileSection.HOME -> {
+                    // Main profile screen
+                    HeroHeader(
+                        title = "我的",
+                        subtitle = "谷的拜 · v${BuildConfig.VERSION_NAME}"
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                            ListRowItem(
+                                title = "设置",
+                                subtitle = "外观 · 首页 · 图鉴 · 日志",
+                                trailing = {
+                                    Icon(
+                                        Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = { showSettings = true }
+                            )
                             HorizontalDivider()
                             ListRowItem(
-                                title = "图鉴模式",
-                                subtitle = "按 IP/系列分类查看",
-                                onClick = { onNavigateToGallery() }
+                                title = "草稿箱",
+                                subtitle = "${drafts.size} 条未完成草稿",
+                                onClick = { showDrafts = true; viewModel.refreshDrafts() }
+                            )
+                            HorizontalDivider()
+                            ListRowItem(
+                                title = "导出备份",
+                                subtitle = "导出所有藏品及图片",
+                                onClick = {
+                                    val fileName = "谷的拜备份_${System.currentTimeMillis()}.zip"
+                                    exportLauncher.launch(fileName)
+                                }
+                            )
+                            HorizontalDivider()
+                            ListRowItem(
+                                title = "导入备份",
+                                subtitle = "从ZIP文件恢复数据",
+                                onClick = { importLauncher.launch("application/zip") }
+                            )
+                            if (!prefs.galleryEntryHome) {
+                                HorizontalDivider()
+                                ListRowItem(
+                                    title = "图鉴模式",
+                                    subtitle = "按 IP/系列分类查看",
+                                    onClick = { onNavigateToGallery() }
+                                )
+                            }
+                            HorizontalDivider()
+                            ListRowItem(
+                                title = "关于谷的拜",
+                                subtitle = "v${BuildConfig.VERSION_NAME}"
                             )
                         }
-                        HorizontalDivider()
-                        ListRowItem(
-                            title = "关于谷的拜",
-                            subtitle = "v${BuildConfig.VERSION_NAME}"
-                        )
+                    }
                     }
                 }
             }
         }
     }
+
+    CelebrationOverlay(
+        visible = celebrate,
+        originX = 0.5f,
+        originY = 0.35f
+    )
 
     if (isExporting) {
         AlertDialog(
@@ -280,6 +329,9 @@ fun ProfileScreen(
         )
     }
 }
+
+/** 「我的」页的三个层级，用于驱动 [AnimatedContent] 的切换方向。 */
+private enum class ProfileSection { HOME, DRAFTS, SETTINGS }
 
 @Composable
 private fun SettingsGroup(

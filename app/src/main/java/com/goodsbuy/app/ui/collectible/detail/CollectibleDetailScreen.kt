@@ -2,6 +2,7 @@ package com.goodsbuy.app.ui.collectible.detail
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -41,7 +43,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.goodsbuy.app.domain.model.OrderStatus
 import com.goodsbuy.app.domain.calculator.CollectibleAccounting
+import com.goodsbuy.app.ui.components.AppAsyncImage
 import com.goodsbuy.app.ui.components.ProfitLossText
+import com.goodsbuy.app.ui.components.StaggeredReveal
+import com.goodsbuy.app.ui.components.colorAnimSpec
+import com.goodsbuy.app.ui.components.pressScaleSpring
 import com.goodsbuy.app.util.formatPrice
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,11 +144,25 @@ if (collectible.imagePaths.isNotEmpty()) {
                     items(OrderStatus.entries.size) { index ->
                         val status = OrderStatus.entries[index]
                         val selected = collectible.status == status
+                        val chipColor by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            animationSpec = colorAnimSpec,
+                            label = "detail_status_color"
+                        )
+                        val chipScale by animateFloatAsState(
+                            targetValue = if (selected) 1.06f else 1f,
+                            animationSpec = pressScaleSpring,
+                            label = "detail_status_scale"
+                        )
                         Surface(
                             onClick = { viewModel.updateStatus(status) },
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            color = chipColor,
                             contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                            shape = RoundedCornerShape(999.dp)
+                            shape = RoundedCornerShape(999.dp),
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = chipScale
+                                scaleY = chipScale
+                            }
                         ) {
                             Text(
                                 status.displayName,
@@ -256,30 +276,32 @@ private fun DetailImageGallery(name: String, imagePaths: List<String>, onImageCl
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(end = 16.dp)
         ) {
-itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path ->
-                Box(modifier = Modifier.clickable { onImageClick(index) }) {
-                    AsyncImage(
-                        model = path,
-                        contentDescription = "$name 图片 ${index + 1}",
-                        modifier = Modifier
-                            .width(96.dp)
-                            .height(128.dp)
-                            .clip(MaterialTheme.shapes.small),
-                        contentScale = ContentScale.Fit
-                    )
-                    if (imagePaths.size > 1) {
-                        Surface(
+            itemsIndexed(imagePaths, key = { index, path -> "$index-$path" }) { index, path ->
+                StaggeredReveal(index = index, key = path) {
+                    Box(modifier = Modifier.clickable { onImageClick(index) }) {
+                        AppAsyncImage(
+                            model = path,
+                            contentDescription = "$name 图片 ${index + 1}",
                             modifier = Modifier
-                                .align(androidx.compose.ui.Alignment.BottomEnd)
-                                .padding(8.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                "${index + 1}/${imagePaths.size}",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall
-                            )
+                                .width(96.dp)
+                                .height(128.dp),
+                            shape = MaterialTheme.shapes.small,
+                            contentScale = ContentScale.Fit
+                        )
+                        if (imagePaths.size > 1) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                                    .padding(8.dp),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    "${index + 1}/${imagePaths.size}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
