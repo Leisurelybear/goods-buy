@@ -4,9 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
@@ -15,6 +23,8 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -63,15 +73,16 @@ fun MainScreen(preferencesRepository: PreferencesRepository) {
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter = slideInVertically(tween(250)) { it },
-                exit = slideOutVertically(tween(250)) { it },
+                enter = slideInVertically(tween(250)) { it } + fadeIn(tween(250)),
+                exit = slideOutVertically(tween(250)) { it } + fadeOut(tween(200)),
             ) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
+                        val selected = currentRoute == item.route
                         NavigationBarItem(
-                            icon = item.icon,
+                            icon = { AnimatedNavIcon(selected = selected) { item.icon() } },
                             label = { Text(item.label) },
-                            selected = currentRoute == item.route,
+                            selected = selected,
                             onClick = {
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -90,5 +101,33 @@ fun MainScreen(preferencesRepository: PreferencesRepository) {
             modifier = Modifier.padding(innerPadding),
             preferencesRepository = preferencesRepository
         )
+    }
+}
+
+/** 底部导航图标：选中时放大并轻微上浮，带一点弹簧回弹。 */
+@Composable
+private fun AnimatedNavIcon(selected: Boolean, icon: @Composable () -> Unit) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.18f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "nav_icon_scale"
+    )
+    val lift by animateDpAsState(
+        targetValue = if (selected) (-1).dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "nav_icon_lift"
+    )
+    Box(
+        modifier = Modifier
+            .offset(y = lift)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        icon()
     }
 }
