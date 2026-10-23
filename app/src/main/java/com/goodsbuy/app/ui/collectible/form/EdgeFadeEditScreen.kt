@@ -1,5 +1,11 @@
 package com.goodsbuy.app.ui.collectible.form
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +50,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.goodsbuy.app.ui.components.exitEasing
+import com.goodsbuy.app.ui.components.fadeAnimSpec
+import com.goodsbuy.app.ui.components.revealSpring
 import com.goodsbuy.app.util.FadeShape
 import kotlin.math.ceil
 import kotlinx.coroutines.launch
@@ -114,13 +123,25 @@ fun EdgeFadeEditScreen(
                     .clip(MaterialTheme.shapes.small).checkerboard(),
                 contentAlignment = Alignment.Center
             ) {
-                preview?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "渐隐预览",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
+                AnimatedContent(
+                    targetState = preview,
+                    transitionSpec = {
+                        (fadeIn(fadeAnimSpec) +
+                            scaleIn(initialScale = 0.94f, animationSpec = revealSpring)) togetherWith
+                            fadeOut(tween(150, easing = exitEasing))
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                    label = "edge_fade_preview"
+                ) { bitmap ->
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "渐隐预览",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
                 if (uiState.isPreviewLoading) {
                     CircularProgressIndicator()
