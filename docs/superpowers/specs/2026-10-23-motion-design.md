@@ -35,6 +35,14 @@
 轻量礼花层：纯 `Canvas` 绘制，不参与布局、不拦截触摸，用于保存成功、导入完成等"值得开心一下"的时刻。
 动画结束由调用方把 `visible` 置回 `false`。
 
+### `ui/components/MotionPreferences.kt`（新增）
+
+`LocalMotionEnabled` 组合局部开关 + `rememberSystemAnimationsEnabled()`：
+读取 `ValueAnimator.areAnimatorsEnabled()`，系统把"动画时长缩放"设为 0（或开启"移除动画"）时
+自动降级为 `false`。`MainActivity` 在 `setContent` 根部提供该开关，全站统一生效。
+降级后：按压缩放不触发、流光/极光/呼吸落到静态终态、列表渐进揭示立即显示、
+礼花层不播放、图片淡入取消、渐隐预览过渡直接切换——功能与布局完全不变。
+
 ### `AnimationSpecs.kt`（扩充）
 
 新增 `popSpec`（变化回弹）、`revealSpring`（揭示）、`pulseSpec`（呼吸）、`tabEnterSpec/tabExitSpec`（Tab 切换）、`pageEnterSpec/pageExitSpec`（二级页面）。
@@ -68,16 +76,22 @@
 - **「我的」页**（`ProfileScreen`）：主页 / 草稿箱 / 设置三个层级改为左右滑入滑出（方向跟随前进/返回）；设置行按下回弹；导入成功后播放礼花。
 - **详情页**（`CollectibleDetailScreen`）：图片缩略图依次揭示 + 流光占位；快捷状态胶囊颜色过渡并放大选中项。
 
+### 过渡与细节
+
+- **搜索框**（`SearchBar`）：聚焦时底色提亮、描边弹性出现、放大镜染色并轻微放大，清除按钮横向展开入场。
+- **导入预览**（`ImportPreviewScreen`）：汇总卡片四块依次揭示，列表行以"记录 id + 下标"为稳定 key 逐行瀑布式入场；阶段切换保留交叉淡入。
+- **图片渐隐预览**（`EdgeFadeEditScreen`）：预览位图由 `AnimatedContent` 承载，形状切换 / 强度调整重算时交叉淡入淡出，新预览以 0.94x 缩放弹性入场。
+
 ## 4. 性能与无障碍
 
 - 缩放/位移/透明度全部走 `graphicsLayer`，不触发重排。
 - 持续型动画（流光、极光、呼吸）周期长、幅度小；`StaggeredReveal` 的延迟有上限，避免长列表末尾等待过久。
 - 礼花层不注册 `pointerInput`，不吞触摸事件。
 - 文案与语义树不受影响：动效只改变绘制层，`contentDescription` / 语义分组维持原样。
+- **跟随系统降级**：`LocalMotionEnabled` 由系统动画开关驱动，用户在开发者选项 / 无障碍里关闭动画后，
+  装饰性动效全部落到终态（见 `MotionPreferences.kt`）。
 
 ## 5. 后续可扩展位置（未做，留作备选）
 
-- `ImportPreviewScreen` / `EdgeFadeEditScreen` 的进度与预览过渡。
-- 搜索框聚焦时的宽度/阴影过渡、清除按钮出现动画。
 - 详情页图片的共享元素（shared element）大图展开。
-- 系统"减少动态效果"开关接入（`LocalMotionDurationScale` / `Settings.Global.ANIMATOR_DURATION_SCALE`）后自动降级。
+- 底部导航栏的指示器滑动（Pill 跟随手指）。
