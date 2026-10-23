@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goodsbuy.app.ui.backup.ImportMode
+import com.goodsbuy.app.ui.components.StaggeredReveal
 import com.goodsbuy.app.util.BackupStage
 import com.goodsbuy.app.util.CollectibleRecord
 
@@ -71,41 +72,51 @@ fun ImportPreviewScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("总计", style = MaterialTheme.typography.bodyLarge)
-                        Text("${preview.total} 条", style = MaterialTheme.typography.bodyLarge)
+                    StaggeredReveal(index = 0, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("总计", style = MaterialTheme.typography.bodyLarge)
+                            Text("${preview.total} 条", style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("将导入/覆盖", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("${preview.willImport} 条", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    StaggeredReveal(index = 1, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("将导入/覆盖", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("${preview.willImport} 条", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("将跳过", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${preview.willSkip} 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    StaggeredReveal(index = 2, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("将跳过", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${preview.willSkip} 条", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    StaggeredReveal(index = 3, modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                    Text("重复项处理", style = MaterialTheme.typography.labelMedium)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        modes.forEach { (mode, label) ->
-                            FilterChip(
-                                selected = importMode == mode,
-                                onClick = { onModeChange(mode) },
-                                label = { Text(label) }
-                            )
+                            Text("重复项处理", style = MaterialTheme.typography.labelMedium)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                modes.forEach { (mode, label) ->
+                                    FilterChip(
+                                        selected = importMode == mode,
+                                        onClick = { onModeChange(mode) },
+                                        label = { Text(label) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -117,12 +128,17 @@ fun ImportPreviewScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                itemsIndexed(preview.items, key = { index, _ -> index }) { _, item ->
-                    ImportPreviewRow(
-                        record = item.record,
-                        action = item.action,
-                        reason = item.reason
-                    )
+                itemsIndexed(
+                    items = preview.items,
+                    key = { index, item -> "${item.record.id}#$index" }
+                ) { index, item ->
+                    StaggeredReveal(index = index, key = item.record.id) {
+                        ImportPreviewRow(
+                            record = item.record,
+                            action = item.action,
+                            reason = item.reason
+                        )
+                    }
                 }
             }
 
